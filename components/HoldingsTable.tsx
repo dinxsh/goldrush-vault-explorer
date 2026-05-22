@@ -11,7 +11,7 @@ const COLS = ["Token", "Balance", "Price", "USD Value", "24h Change", "Protocol"
 
 export default function HoldingsTable({ nodes }: Props) {
     const total = nodes.reduce((sum, n) => sum + n.balanceUSD, 0);
-    const formattedTotal = total.toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const formattedTotal = total > 0 ? total.toLocaleString("en-US", { style: "currency", currency: "USD" }) : "—";
 
     return (
         <div

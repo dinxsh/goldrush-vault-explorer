@@ -35,12 +35,36 @@ export async function recursiveDecompose(address: string, chain: SupportedChain,
         let rawBalance: string | null = null;
         let hasRawBalance = false;
         if (item.balance !== null && item.balance !== undefined && decimals !== null) {
-            const raw = Number(item.balance) / Math.pow(10, decimals);
-            hasRawBalance = raw > 0;
-            rawBalance = raw.toLocaleString("en-US", {
-                maximumFractionDigits: raw < 1 ? 6 : raw < 1000 ? 4 : 2,
-                minimumFractionDigits: 0,
-            });
+            try {
+                const balBig = BigInt(item.balance.toString());
+                hasRawBalance = balBig > BigInt(0);
+                if (hasRawBalance) {
+                    const divisor = BigInt("1" + "0".repeat(decimals));
+                    const whole = balBig / divisor;
+                    const frac = balBig % divisor;
+                    const wholeNum = Number(whole);
+                    if (wholeNum >= 1_000_000_000) {
+                        rawBalance = `${(wholeNum / 1_000_000_000).toFixed(2)}B`;
+                    } else if (wholeNum >= 1_000_000) {
+                        rawBalance = `${(wholeNum / 1_000_000).toFixed(2)}M`;
+                    } else {
+                        const fracStr = frac.toString().padStart(decimals, "0").replace(/0+$/, "");
+                        const maxDec = wholeNum < 1 ? 6 : wholeNum < 1000 ? 4 : 2;
+                        const display = fracStr.slice(0, maxDec);
+                        rawBalance = `${wholeNum.toLocaleString("en-US")}${display ? `.${display}` : ""}`;
+                    }
+                }
+            } catch {
+                // fallback for non-bigint balances
+                const raw = Number(item.balance) / Math.pow(10, decimals);
+                hasRawBalance = raw > 0;
+                rawBalance =
+                    raw >= 1e9
+                        ? `${(raw / 1e9).toFixed(2)}B`
+                        : raw >= 1e6
+                          ? `${(raw / 1e6).toFixed(2)}M`
+                          : raw.toLocaleString("en-US", { maximumFractionDigits: raw < 1 ? 6 : raw < 1000 ? 4 : 2 });
+            }
         }
 
         const node: VaultNode = {

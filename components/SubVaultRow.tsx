@@ -30,7 +30,7 @@ function chainLabel(chain: string): string {
 }
 
 function formatPrice(price: number | null): string {
-    if (price === null) return "—";
+    if (price === null || price === 0) return "—";
     if (price < 0.01) return `$${price.toFixed(6)}`;
     if (price < 1) return `$${price.toFixed(4)}`;
     return price.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -41,7 +41,8 @@ export default function SubVaultRow({ node }: Props) {
     const [logoFailed, setLogoFailed] = useState(false);
     const hasChildren = node.children.length > 0;
 
-    const formattedValue = node.balanceUSD.toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const formattedValue =
+        node.balanceUSD > 0 ? node.balanceUSD.toLocaleString("en-US", { style: "currency", currency: "USD" }) : "—";
 
     const change = node.balance24hChange;
     const formattedChange =

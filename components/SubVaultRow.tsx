@@ -65,10 +65,28 @@ export default function SubVaultRow({ node }: Props) {
                 <td className="py-2.5 pr-3" style={{ paddingLeft: indentLeft }}>
                     <div className="flex items-center gap-2">
                         <span
-                            className="w-3.5 shrink-0 text-[10px] select-none"
-                            style={{ color: "var(--accent)", opacity: hasChildren ? 1 : 0 }}
+                            className="shrink-0 select-none"
+                            style={{ width: 14, opacity: hasChildren ? 1 : 0, color: "var(--accent)" }}
                         >
-                            {expanded ? "▼" : "▶"}
+                            <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 12 12"
+                                fill="none"
+                                style={{
+                                    display: "block",
+                                    transition: "transform 0.15s",
+                                    transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+                                }}
+                            >
+                                <path
+                                    d="M4 2.5L8 6L4 9.5"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </svg>
                         </span>
                         {node.logoUrl && !logoFailed ? (
                             <img

@@ -4,7 +4,10 @@ import { type SupportedChain, type TxSummary } from "@/types/vault";
 import { type Chain } from "@covalenthq/client-sdk";
 import { type NextRequest, NextResponse } from "next/server";
 
-// Events to skip — internal/system events that don't describe user intent
+const cache = new Map<string, { txs: TxSummary[]; ts: number }>();
+const CACHE_TTL = 5 * 60 * 1000;
+
+// Internal/system events that don't describe user intent
 const SKIP_EVENTS = new Set([
     "BeforeExecution",
     "AfterExecution",
@@ -15,9 +18,10 @@ const SKIP_EVENTS = new Set([
     "SafeSetup",
     "EnabledModule",
     "ChangedThreshold",
+    "AddedOwner",
+    "RemovedOwner",
 ]);
 
-// Priority ranking — higher index = higher priority
 const EVENT_PRIORITY: Record<string, number> = {
     Approval: 1,
     ApprovalForAll: 1,
@@ -28,6 +32,7 @@ const EVENT_PRIORITY: Record<string, number> = {
     Mint: 4,
     Repay: 5,
     Borrow: 5,
+    Supply: 6,
     Swap: 6,
     Withdraw: 7,
     Deposit: 7,
@@ -36,7 +41,6 @@ const EVENT_PRIORITY: Record<string, number> = {
 function pickEventName(logEvents: Array<{ decoded?: { name?: string } | null } | null>): string | null {
     let best: string | null = null;
     let bestPriority = -1;
-
     for (const log of logEvents) {
         const name = log?.decoded?.name;
         if (!name || SKIP_EVENTS.has(name)) continue;
@@ -46,7 +50,6 @@ function pickEventName(logEvents: Array<{ decoded?: { name?: string } | null } |
             best = name;
         }
     }
-
     return best;
 }
 
@@ -55,7 +58,7 @@ function categorize(eventName: string | null): TxSummary["eventCategory"] {
     const n = eventName.toLowerCase();
     if (n.includes("deposit")) return "deposit";
     if (n.includes("withdraw")) return "withdraw";
-    if (n.includes("swap")) return "swap";
+    if (n.includes("swap") || n.includes("supply")) return "swap";
     if (n.includes("transfer")) return "transfer";
     if (n.includes("approval")) return "approval";
     return "other";
@@ -67,6 +70,12 @@ export async function GET(req: NextRequest) {
 
     if (!address) {
         return NextResponse.json({ error: "address query param is required" }, { status: 400 });
+    }
+
+    const cacheKey = `${chain}:${address.toLowerCase()}`;
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+        return NextResponse.json({ txs: cached.txs });
     }
 
     try {
@@ -82,7 +91,6 @@ export async function GET(req: NextRequest) {
 
         const txs: TxSummary[] = resp.data.items
             .filter((tx): tx is NonNullable<(typeof resp.data.items)[number]> => tx !== null && tx !== undefined)
-            .slice(0, 10)
             .map((tx) => {
                 const logs = (tx.log_events ?? []).filter(
                     (l): l is NonNullable<typeof l> => l !== null && l !== undefined
@@ -99,6 +107,7 @@ export async function GET(req: NextRequest) {
                 };
             });
 
+        cache.set(cacheKey, { txs, ts: Date.now() });
         return NextResponse.json({ txs });
     } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";

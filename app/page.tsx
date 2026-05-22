@@ -16,25 +16,32 @@ const CHAINS: { value: SupportedChain; label: string }[] = [
 
 const PRESETS: { label: string; protocol: string; address: string; chain: SupportedChain; desc: string }[] = [
     {
+        label: "Compound USDC",
+        protocol: "Compound v3 · ETH",
+        address: "0xc3d688B66703497DAA19211EEdff47f25384cdc3",
+        chain: "eth-mainnet",
+        desc: "Comet USDC market — holds USDC + multi-collateral assets (WBTC, ETH, LINK…)",
+    },
+    {
+        label: "Compound WETH",
+        protocol: "Compound v3 · ETH",
+        address: "0xA17581A9E3356d9A858b789D68B4d866e593aE94",
+        chain: "eth-mainnet",
+        desc: "Comet WETH market — holds WETH + collateral token reserves",
+    },
+    {
+        label: "Euler USDC",
+        protocol: "Euler v2 · ETH",
+        address: "0x797DD80692c3b2dAdabCe8e30C07a7d6E32914aa",
+        chain: "eth-mainnet",
+        desc: "EVC-powered ERC-4626 USDC vault — holds USDC in strategy positions",
+    },
+    {
         label: "Steakhouse USDC",
         protocol: "Morpho · ETH",
         address: "0xbEef047a543E45807105E51A8BBEFCc5950fcfBa",
         chain: "eth-mainnet",
-        desc: "MetaMorpho vault — allocates across Morpho Blue USDC markets",
-    },
-    {
-        label: "Re7 WETH",
-        protocol: "Morpho · ETH",
-        address: "0x78Fc2c2eD1A4cDb5402365934aE5648aDAd094d",
-        chain: "eth-mainnet",
-        desc: "Curated WETH vault with nested lending positions",
-    },
-    {
-        label: "Gauntlet USDC Prime",
-        protocol: "Morpho · ETH",
-        address: "0xdd0f28e19C1780eb6396170735D45153D261490d",
-        chain: "eth-mainnet",
-        desc: "Risk-managed USDC vault across multiple Morpho markets",
+        desc: "MetaMorpho vault — rich transaction history of Deposit / Withdraw events",
     },
     {
         label: "Moonwell Flagship USDC",
@@ -49,13 +56,6 @@ const PRESETS: { label: string; protocol: string; address: string; chain: Suppor
         address: "0xd63070114470f685b75B74D60EEc7c1113d33a3d",
         chain: "base-mainnet",
         desc: "Flagship USDC MetaMorpho vault on Base",
-    },
-    {
-        label: "Euler USDC",
-        protocol: "Euler · ETH",
-        address: "0x797DD80692c3b2dAdabCe8e30C07a7d6E32914aa",
-        chain: "eth-mainnet",
-        desc: "EVC-powered ERC-4626 USDC vault on Euler v2",
     },
 ];
 

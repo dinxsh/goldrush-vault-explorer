@@ -3,6 +3,9 @@ import { type SupportedChain, type VaultStats } from "@/types/vault";
 import { type Chain } from "@covalenthq/client-sdk";
 import { type NextRequest, NextResponse } from "next/server";
 
+const cache = new Map<string, { stats: VaultStats | null; ts: number }>();
+const CACHE_TTL = 5 * 60 * 1000;
+
 export async function GET(req: NextRequest) {
     const address = req.nextUrl.searchParams.get("address");
     const chain = (req.nextUrl.searchParams.get("chain") ?? "eth-mainnet") as SupportedChain;
@@ -11,10 +14,17 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "address query param is required" }, { status: 400 });
     }
 
+    const cacheKey = `${chain}:${address.toLowerCase()}`;
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+        return NextResponse.json({ stats: cached.stats });
+    }
+
     try {
         const resp = await getGoldRushClient().TransactionService.getTransactionSummary(chain as Chain, address);
 
         if (resp.error || !resp.data?.items?.[0]) {
+            cache.set(cacheKey, { stats: null, ts: Date.now() });
             return NextResponse.json({ stats: null });
         }
 
@@ -31,6 +41,7 @@ export async function GET(req: NextRequest) {
                     : null,
         };
 
+        cache.set(cacheKey, { stats, ts: Date.now() });
         return NextResponse.json({ stats });
     } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";

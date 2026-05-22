@@ -29,14 +29,19 @@ function chainLabel(chain: string): string {
     return map[chain] ?? chain.toUpperCase().slice(0, 6);
 }
 
+function formatPrice(price: number | null): string {
+    if (price === null) return "—";
+    if (price < 0.01) return `$${price.toFixed(6)}`;
+    if (price < 1) return `$${price.toFixed(4)}`;
+    return price.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
 export default function SubVaultRow({ node }: Props) {
     const [expanded, setExpanded] = useState(false);
+    const [logoFailed, setLogoFailed] = useState(false);
     const hasChildren = node.children.length > 0;
 
-    const formattedValue = node.balanceUSD.toLocaleString("en-US", {
-        style: "currency",
-        currency: "USD",
-    });
+    const formattedValue = node.balanceUSD.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
     const change = node.balance24hChange;
     const formattedChange =
@@ -45,99 +50,103 @@ export default function SubVaultRow({ node }: Props) {
             : change > 0
               ? `+${change.toLocaleString("en-US", { style: "currency", currency: "USD" })}`
               : change.toLocaleString("en-US", { style: "currency", currency: "USD" });
-
     const changeColor = change > 0 ? "var(--positive)" : change < 0 ? "var(--negative)" : "var(--text-secondary)";
+
+    const indentLeft = 12 + node.depth * 16;
 
     return (
         <>
             <tr
                 style={{ borderBottom: "1px solid var(--border)" }}
-                className={hasChildren ? "cursor-pointer hover:bg-white/5" : "hover:bg-white/[0.02]"}
+                className={hasChildren ? "cursor-pointer hover:bg-white/[0.04]" : "hover:bg-white/[0.02]"}
                 onClick={hasChildren ? () => setExpanded((v) => !v) : undefined}
             >
                 {/* Token */}
-                <td className="py-3 pr-4" style={{ paddingLeft: `${8 + node.depth * 16}px` }}>
+                <td className="py-2.5 pr-3" style={{ paddingLeft: indentLeft }}>
                     <div className="flex items-center gap-2">
-                        {/* Chevron toggle */}
                         <span
-                            className="w-4 shrink-0 text-xs select-none"
-                            style={{ color: "var(--text-secondary)", opacity: hasChildren ? 1 : 0 }}
+                            className="w-3.5 shrink-0 text-[10px] select-none"
+                            style={{ color: "var(--accent)", opacity: hasChildren ? 1 : 0 }}
                         >
                             {expanded ? "▼" : "▶"}
                         </span>
-
-                        {/* Logo */}
-                        {node.logoUrl ? (
+                        {node.logoUrl && !logoFailed ? (
                             <img
                                 src={node.logoUrl}
                                 alt=""
-                                width={16}
-                                height={16}
+                                width={18}
+                                height={18}
                                 className="rounded-full shrink-0 object-cover"
-                                onError={(e) => {
-                                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                                    const sibling = e.currentTarget.nextElementSibling as HTMLElement | null;
-                                    if (sibling) sibling.style.display = "flex";
-                                }}
+                                onError={() => setLogoFailed(true)}
                             />
-                        ) : null}
-                        <span
-                            className="rounded-full shrink-0 items-center justify-center text-[9px] font-bold text-white"
-                            style={{
-                                width: 16,
-                                height: 16,
-                                background: placeholderColor(node.address),
-                                display: node.logoUrl ? "none" : "flex",
-                            }}
-                        >
-                            {node.ticker.slice(0, 1)}
-                        </span>
-
-                        {/* Name + ticker */}
-                        <span className="text-sm" style={{ color: "var(--text-primary)" }}>
-                            {node.name}
-                        </span>
-                        <span
-                            className="rounded px-1 py-0.5 text-xs"
-                            style={{ background: "var(--border)", color: "var(--text-secondary)" }}
-                        >
-                            {node.ticker}
-                        </span>
+                        ) : (
+                            <span
+                                className="rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold text-white"
+                                style={{ width: 18, height: 18, background: placeholderColor(node.address) }}
+                            >
+                                {node.ticker.slice(0, 1)}
+                            </span>
+                        )}
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-sm leading-tight" style={{ color: "var(--text-primary)" }}>
+                                {node.name}
+                            </span>
+                            <span className="text-xs leading-tight" style={{ color: "var(--text-secondary)" }}>
+                                {node.ticker || chainLabel(node.chain)}
+                            </span>
+                        </div>
                     </div>
                 </td>
 
-                {/* Chain */}
-                <td className="py-3 px-4">
-                    <span
-                        className="rounded px-2 py-0.5 text-xs font-medium"
-                        style={{ background: "var(--border)", color: "var(--text-secondary)" }}
-                    >
-                        {chainLabel(node.chain)}
-                    </span>
+                {/* Balance */}
+                <td className="py-2.5 px-3 text-sm tabular-nums" style={{ color: "var(--text-secondary)" }}>
+                    {node.rawBalance ?? "—"}
+                </td>
+
+                {/* Price */}
+                <td className="py-2.5 px-3 text-right text-sm tabular-nums" style={{ color: "var(--text-secondary)" }}>
+                    {formatPrice(node.priceUSD)}
                 </td>
 
                 {/* USD Value */}
-                <td className="py-3 px-4 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
+                <td
+                    className="py-2.5 px-3 text-right text-sm tabular-nums font-medium"
+                    style={{ color: "var(--text-primary)" }}
+                >
                     {formattedValue}
                 </td>
 
                 {/* 24h Change */}
-                <td className="py-3 px-4 text-right text-sm tabular-nums" style={{ color: changeColor }}>
+                <td className="py-2.5 px-3 text-right text-sm tabular-nums" style={{ color: changeColor }}>
                     {formattedChange}
                 </td>
 
+                {/* Protocol */}
+                <td className="py-2.5 px-3">
+                    {node.protocolName ? (
+                        <span
+                            className="rounded px-1.5 py-0.5 text-xs"
+                            style={{ background: "rgba(249,115,22,0.12)", color: "var(--accent)" }}
+                        >
+                            {node.protocolName}
+                        </span>
+                    ) : (
+                        <span style={{ color: "var(--text-secondary)", fontSize: 12 }}>—</span>
+                    )}
+                </td>
+
                 {/* Type */}
-                <td className="py-3 pl-4 pr-2">
+                <td className="py-2.5 pl-3 pr-3">
                     {hasChildren ? (
                         <span
-                            className="rounded px-2 py-0.5 text-xs font-medium"
-                            style={{ background: "rgba(59,130,246,0.15)", color: "#60a5fa" }}
+                            className="rounded px-1.5 py-0.5 text-xs font-medium whitespace-nowrap"
+                            style={{ background: "rgba(59,130,246,0.12)", color: "#60a5fa" }}
                         >
-                            ERC-4626 Vault
+                            ERC-4626
                         </span>
                     ) : (
                         <span
-                            className="rounded px-2 py-0.5 text-xs font-medium"
+                            className="rounded px-1.5 py-0.5 text-xs"
                             style={{ background: "var(--border)", color: "var(--text-secondary)" }}
                         >
                             Token
@@ -146,7 +155,8 @@ export default function SubVaultRow({ node }: Props) {
                 </td>
             </tr>
 
-            {expanded && node.children.map((child) => <SubVaultRow key={child.address} node={child} />)}
+            {expanded &&
+                node.children.map((child) => <SubVaultRow key={`${child.address}-${child.depth}`} node={child} />)}
         </>
     );
 }

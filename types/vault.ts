@@ -16,13 +16,25 @@ export interface VaultNode {
     logoUrl: string;
     depth: number;
     children: VaultNode[];
+    // Extended fields from GoldRush
+    priceUSD: number | null;
+    rawBalance: string | null;
+    decimals: number | null;
+    protocolName: string | null;
 }
 
 export interface TxSummary {
     hash: string;
     timestamp: string;
-    valueUSD: number | null;
     successful: boolean;
-    logCount: number;
     eventName: string | null;
+    eventCategory: "deposit" | "withdraw" | "swap" | "transfer" | "approval" | "other";
+    explorerUrl: string;
+    fromAddress: string;
+}
+
+export interface VaultStats {
+    totalCount: number;
+    firstSeenAt: string | null;
+    lastActiveAt: string | null;
 }

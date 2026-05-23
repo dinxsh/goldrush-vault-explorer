@@ -150,7 +150,12 @@ export default function SubVaultRow({ node }: Props) {
                             {node.protocolName}
                         </span>
                     ) : (
-                        <span style={{ color: "var(--text-secondary)", fontSize: 12 }}>—</span>
+                        <span
+                            className="rounded px-1.5 py-0.5 text-xs"
+                            style={{ background: "var(--border)", color: "var(--text-secondary)" }}
+                        >
+                            {chainLabel(node.chain)}
+                        </span>
                     )}
                 </td>
 

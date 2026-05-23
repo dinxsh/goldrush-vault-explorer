@@ -8,7 +8,7 @@ import { type Chain } from "@covalenthq/client-sdk";
 const holdingsCache = new Map<string, { nodes: VaultNode[]; ts: number }>();
 const HOLDINGS_TTL = 2 * 60 * 1000;
 
-const priceCache = new Map<string, { price: number | null; ts: number }>();
+const priceCache = new Map<string, { price: number | null; prev: number | null; ts: number }>();
 const PRICE_TTL = 5 * 60 * 1000;
 
 // ─── Chain helpers ────────────────────────────────────────────────────────────
@@ -85,26 +85,27 @@ function detectProtocol(name: string | null, ticker?: string | null): string | n
 
 // ─── Price lookup ─────────────────────────────────────────────────────────────
 
-async function getTokenPrice(chain: SupportedChain, tokenAddress: string): Promise<number | null> {
+async function getTokenPriceWithHistory(
+    chain: SupportedChain,
+    tokenAddress: string
+): Promise<{ price: number | null; prev: number | null }> {
     const lower = tokenAddress.toLowerCase();
-    if (STABLECOINS.has(lower)) return 1.0;
+    if (STABLECOINS.has(lower)) return { price: 1.0, prev: 1.0 };
 
     const key = `${chain}:${lower}`;
     const cached = priceCache.get(key);
-    if (cached && Date.now() - cached.ts < PRICE_TTL) return cached.price;
+    if (cached && Date.now() - cached.ts < PRICE_TTL) return { price: cached.price, prev: cached.prev };
 
     let price: number | null = null;
+    let prev: number | null = null;
     try {
         const apiKey = (process.env.GOLDRUSH_API_KEY ?? "").trim();
         if (!apiKey) throw new Error("no api key");
 
-        // Use REST API directly — SDK maps the response field as "prices" not "items"
-        // Use yesterday as 'to' since today's price entry is often null
+        // Prices come back in ascending order (oldest first); scan from end for most recent
         const toDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const fromDate = new Date(toDate.getTime() - 7 * 24 * 60 * 60 * 1000);
         const fmt = (d: Date) => d.toISOString().slice(0, 10);
-        // pricesAtAsc is not a valid param — prices come back in ascending order;
-        // scan from the end to get the most recent non-null price
         const url = `https://api.covalenthq.com/v1/pricing/historical_by_addresses_v2/${chain}/USD/${tokenAddress}/?key=${apiKey}&from=${fmt(fromDate)}&to=${fmt(toDate)}`;
 
         const controller = new AbortController();
@@ -119,10 +120,15 @@ async function getTokenPrice(chain: SupportedChain, tokenAddress: string): Promi
 
         if (!json.error && json.data?.[0]?.prices) {
             const prices = json.data[0].prices;
+            // Walk backwards to find the two most-recent non-null price entries
             for (let i = prices.length - 1; i >= 0; i--) {
                 if (prices[i]?.price != null) {
-                    price = prices[i].price!;
-                    break;
+                    if (price === null) {
+                        price = prices[i].price!;
+                    } else {
+                        prev = prices[i].price!;
+                        break;
+                    }
                 }
             }
         }
@@ -130,8 +136,12 @@ async function getTokenPrice(chain: SupportedChain, tokenAddress: string): Promi
         // pricing unavailable — leave null
     }
 
-    priceCache.set(key, { price, ts: Date.now() });
-    return price;
+    priceCache.set(key, { price, prev, ts: Date.now() });
+    return { price, prev };
+}
+
+async function getTokenPrice(chain: SupportedChain, tokenAddress: string): Promise<number | null> {
+    return (await getTokenPriceWithHistory(chain, tokenAddress)).price;
 }
 
 // ─── On-chain ERC-4626 decomposition ─────────────────────────────────────────
@@ -159,11 +169,15 @@ async function buildERC4626Node(
     if (totalAssetsRaw === null) return null;
 
     const underlyingDec = assetDec ?? 18;
-    const underlyingPrice = await getTokenPrice(chain, assetAddr);
+    const { price: underlyingPrice, prev: underlyingPricePrev } = await getTokenPriceWithHistory(chain, assetAddr);
 
     const rawBalance = formatBigBalance(totalAssetsRaw, underlyingDec);
     const totalTokens = bigIntToFloat(totalAssetsRaw, underlyingDec);
     const balanceUSD = underlyingPrice !== null ? totalTokens * underlyingPrice : 0;
+    const balance24hChange =
+        underlyingPrice !== null && underlyingPricePrev !== null
+            ? totalTokens * (underlyingPrice - underlyingPricePrev)
+            : 0;
 
     // Share price: how many underlying per 1 vault share × underlying price
     let priceUSD: number | null = null;
@@ -196,7 +210,7 @@ async function buildERC4626Node(
                 ticker: assetSym ?? "",
                 chain,
                 balanceUSD,
-                balance24hChange: 0,
+                balance24hChange,
                 logoUrl: tokenLogoUrl(chain, assetAddr),
                 depth: depth + 1,
                 children: [],
@@ -216,7 +230,7 @@ async function buildERC4626Node(
         ticker: vaultSym ?? `v${assetSym ?? ""}`,
         chain,
         balanceUSD,
-        balance24hChange: 0,
+        balance24hChange,
         logoUrl: tokenLogoUrl(chain, assetAddr), // use underlying asset logo
         depth,
         children,

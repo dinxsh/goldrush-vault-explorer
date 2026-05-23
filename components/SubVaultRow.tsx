@@ -46,11 +46,11 @@ export default function SubVaultRow({ node }: Props) {
 
     const change = node.balance24hChange;
     const formattedChange =
-        change === 0
-            ? "—"
-            : change > 0
-              ? `+${change.toLocaleString("en-US", { style: "currency", currency: "USD" })}`
-              : change.toLocaleString("en-US", { style: "currency", currency: "USD" });
+        change > 0
+            ? `+${change.toLocaleString("en-US", { style: "currency", currency: "USD" })}`
+            : change < 0
+              ? change.toLocaleString("en-US", { style: "currency", currency: "USD" })
+              : "$0.00";
     const changeColor = change > 0 ? "var(--positive)" : change < 0 ? "var(--negative)" : "var(--text-secondary)";
 
     const indentLeft = 12 + node.depth * 16;

@@ -1,0 +1,17 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
+# env / secrets
+.env
+.env*.local
+
+# misc
+.gstack/
+.DS_Store
+*.log

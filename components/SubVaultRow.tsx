@@ -30,7 +30,7 @@ function chainLabel(chain: string): string {
 }
 
 function formatPrice(price: number | null): string {
-    if (price === null || price === 0) return "—";
+    if (price === null || price === 0) return "-";
     if (price < 0.01) return `$${price.toFixed(6)}`;
     if (price < 1) return `$${price.toFixed(4)}`;
     return price.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -42,7 +42,7 @@ export default function SubVaultRow({ node }: Props) {
     const hasChildren = node.children.length > 0;
 
     const formattedValue =
-        node.balanceUSD > 0 ? node.balanceUSD.toLocaleString("en-US", { style: "currency", currency: "USD" }) : "—";
+        node.balanceUSD > 0 ? node.balanceUSD.toLocaleString("en-US", { style: "currency", currency: "USD" }) : "-";
 
     const change = node.balance24hChange;
     const formattedChange =
@@ -52,6 +52,15 @@ export default function SubVaultRow({ node }: Props) {
               ? change.toLocaleString("en-US", { style: "currency", currency: "USD" })
               : "$0.00";
     const changeColor = change > 0 ? "var(--positive)" : change < 0 ? "var(--negative)" : "var(--text-secondary)";
+
+    // "Type" badge: prefer the explicit nodeType, else infer from whether it expands.
+    const nodeType = node.nodeType ?? (hasChildren ? "vault" : "token");
+    const typeBadge =
+        nodeType === "vault"
+            ? { label: "ERC-4626 Vault", bg: "rgba(59,130,246,0.12)", fg: "#60a5fa" }
+            : nodeType === "market"
+              ? { label: "Blue Market", bg: "rgba(168,85,247,0.14)", fg: "#c084fc" }
+              : { label: "Token", bg: "var(--border)", fg: "var(--text-secondary)" };
 
     const indentLeft = 12 + node.depth * 16;
 
@@ -110,8 +119,8 @@ export default function SubVaultRow({ node }: Props) {
                             <span className="text-sm leading-tight" style={{ color: "var(--text-primary)" }}>
                                 {node.name}
                             </span>
-                            <span className="text-xs leading-tight" style={{ color: "var(--text-secondary)" }}>
-                                {node.ticker || chainLabel(node.chain)}
+                            <span className="text-xs leading-tight truncate" style={{ color: "var(--text-secondary)" }}>
+                                {node.subLabel || node.ticker || chainLabel(node.chain)}
                             </span>
                         </div>
                     </div>
@@ -119,7 +128,7 @@ export default function SubVaultRow({ node }: Props) {
 
                 {/* Balance */}
                 <td className="py-2.5 px-3 text-sm tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                    {node.rawBalance ?? "—"}
+                    {node.rawBalance ?? "-"}
                 </td>
 
                 {/* Price */}
@@ -161,19 +170,19 @@ export default function SubVaultRow({ node }: Props) {
 
                 {/* Type */}
                 <td className="py-2.5 pl-3 pr-3">
-                    {hasChildren ? (
-                        <span
-                            className="rounded px-1.5 py-0.5 text-xs font-medium whitespace-nowrap"
-                            style={{ background: "rgba(59,130,246,0.12)", color: "#60a5fa" }}
-                        >
-                            ERC-4626
-                        </span>
-                    ) : (
+                    {typeBadge.label === "Token" ? (
                         <span
                             className="rounded px-1.5 py-0.5 text-xs"
                             style={{ background: "var(--border)", color: "var(--text-secondary)" }}
                         >
                             Token
+                        </span>
+                    ) : (
+                        <span
+                            className="rounded px-1.5 py-0.5 text-xs font-medium whitespace-nowrap"
+                            style={{ background: typeBadge.bg, color: typeBadge.fg }}
+                        >
+                            {typeBadge.label}
                         </span>
                     )}
                 </td>

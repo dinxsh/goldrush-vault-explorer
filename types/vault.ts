@@ -21,6 +21,13 @@ export interface VaultNode {
     rawBalance: string | null;
     decimals: number | null;
     protocolName: string | null;
+    // What kind of node this is, used to pick the "Type" badge in the UI.
+    //   vault  → an ERC-4626 vault (expandable into positions)
+    //   market → a Morpho Blue market position the vault supplies into
+    //   token  → a plain token leaf
+    nodeType?: "vault" | "market" | "token";
+    // Optional secondary line, e.g. "WBTC collateral · 2 markets".
+    subLabel?: string | null;
 }
 
 export interface TxSummary {

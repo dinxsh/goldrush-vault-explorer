@@ -7,6 +7,7 @@ interface Props {
     chain: SupportedChain;
     totalUSD: number;
     holdingCount: number;
+    apy?: number | null; // vault net APY (0.05 = 5%)
 }
 
 const CHAIN_LABELS: Record<SupportedChain, string> = {
@@ -27,10 +28,12 @@ function shortDate(iso: string | null): string {
 interface StatProps {
     label: string;
     value: string;
-    accent?: boolean;
+    tone?: "accent" | "positive";
 }
 
-function Stat({ label, value, accent }: StatProps) {
+function Stat({ label, value, tone }: StatProps) {
+    const color =
+        tone === "accent" ? "var(--accent)" : tone === "positive" ? "var(--positive)" : "var(--text-primary)";
     return (
         <div className="flex flex-col gap-0.5">
             <span className="text-xs uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
@@ -38,10 +41,7 @@ function Stat({ label, value, accent }: StatProps) {
             </span>
             <span
                 className="text-sm font-semibold tabular-nums"
-                style={{
-                    color: accent ? "var(--accent)" : "var(--text-primary)",
-                    fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-                }}
+                style={{ color, fontFamily: '"JetBrains Mono", ui-monospace, monospace' }}
             >
                 {value}
             </span>
@@ -49,7 +49,7 @@ function Stat({ label, value, accent }: StatProps) {
     );
 }
 
-export default function VaultStatsBar({ stats, chain, totalUSD, holdingCount }: Props) {
+export default function VaultStatsBar({ stats, chain, totalUSD, holdingCount, apy }: Props) {
     const totalFormatted = totalUSD.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
     return (
@@ -61,7 +61,8 @@ export default function VaultStatsBar({ stats, chain, totalUSD, holdingCount }: 
                 gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
             }}
         >
-            <Stat label="Total Value" value={totalFormatted} accent />
+            <Stat label="Total Value" value={totalFormatted} tone="accent" />
+            {apy != null && <Stat label="Net APY" value={`${(apy * 100).toFixed(2)}%`} tone="positive" />}
             <Stat label="Holdings" value={holdingCount.toString()} />
             <Stat label="Network" value={CHAIN_LABELS[chain]} />
             {stats && <Stat label="Lifetime Txs" value={stats.totalCount.toLocaleString()} />}

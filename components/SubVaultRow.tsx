@@ -5,6 +5,7 @@ import { useState } from "react";
 
 interface Props {
     node: VaultNode;
+    vaultTotal: number; // top-level total, for the allocation bar
 }
 
 const LOGO_PLACEHOLDER_COLORS = ["#f97316", "#3b82f6", "#8b5cf6", "#10b981", "#ec4899", "#f59e0b"];
@@ -29,33 +30,28 @@ function chainLabel(chain: string): string {
     return map[chain] ?? chain.toUpperCase().slice(0, 6);
 }
 
-function formatPrice(price: number | null): string {
-    if (price === null || price === 0) return "-";
-    if (price < 0.01) return `$${price.toFixed(6)}`;
-    if (price < 1) return `$${price.toFixed(4)}`;
-    return price.toLocaleString("en-US", { style: "currency", currency: "USD" });
-}
-
-export default function SubVaultRow({ node }: Props) {
-    const [expanded, setExpanded] = useState(false);
+export default function SubVaultRow({ node, vaultTotal }: Props) {
+    // Expand the top-level vault by default so its positions are visible immediately;
+    // deeper market drill-downs stay collapsed until clicked.
+    const [expanded, setExpanded] = useState(node.depth === 0);
     const [logoFailed, setLogoFailed] = useState(false);
     const hasChildren = node.children.length > 0;
 
     const formattedValue =
-        node.balanceUSD > 0 ? node.balanceUSD.toLocaleString("en-US", { style: "currency", currency: "USD" }) : "-";
+        node.balanceUSD > 0 ? node.balanceUSD.toLocaleString("en-US", { style: "currency", currency: "USD" }) : "—";
 
+    // 24h: treat sub-0.1%-of-value moves as flat so stablecoin price noise (USDC at
+    // $0.9996) doesn't read as a loss, while real moves on volatile assets still show.
     const change = node.balance24hChange;
-    const formattedChange =
-        change > 0
-            ? `+${change.toLocaleString("en-US", { style: "currency", currency: "USD" })}`
-            : change < 0
-              ? change.toLocaleString("en-US", { style: "currency", currency: "USD" })
-              : "$0.00";
-    const changeColor = change > 0 ? "var(--positive)" : change < 0 ? "var(--negative)" : "var(--text-secondary)";
+    const isFlat = change === 0 || (node.balanceUSD > 0 && Math.abs(change) / node.balanceUSD < 0.001);
+    const formattedChange = isFlat
+        ? "—"
+        : change > 0
+          ? `+${change.toLocaleString("en-US", { style: "currency", currency: "USD" })}`
+          : change.toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const changeColor = isFlat ? "var(--text-secondary)" : change > 0 ? "var(--positive)" : "var(--negative)";
 
-    // "Type" badge: prefer the explicit nodeType, else infer from whether it expands.
-    // Labels are protocol-accurate (a Compound Comet is not ERC-4626; an Euler/Compound
-    // position is not a Morpho Blue market).
+    // Type badge, protocol-accurate.
     const nodeType = node.nodeType ?? (hasChildren ? "vault" : "token");
     const proto = node.protocolName;
     const blue = { bg: "rgba(59,130,246,0.12)", fg: "#60a5fa" };
@@ -78,17 +74,29 @@ export default function SubVaultRow({ node }: Props) {
                 }
               : { label: "Token", ...gray };
 
-    const indentLeft = 12 + node.depth * 16;
+    // Allocation share of the vault's total (hidden for the vault root, which is 100%).
+    const allocation = vaultTotal > 0 ? (node.balanceUSD / vaultTotal) * 100 : 0;
+    const showAlloc = nodeType !== "vault" && node.balanceUSD > 0;
+
+    const indentLeft = 12 + node.depth * 18;
+    const depthBg = node.depth === 0 ? "" : node.depth === 1 ? "bg-white/[0.02]" : "bg-white/[0.035]";
+    const hoverBg = hasChildren ? "cursor-pointer hover:bg-white/[0.06]" : "hover:bg-white/[0.04]";
 
     return (
         <>
             <tr
                 style={{ borderBottom: "1px solid var(--border)" }}
-                className={hasChildren ? "cursor-pointer hover:bg-white/[0.04]" : "hover:bg-white/[0.02]"}
+                className={`${depthBg} ${hoverBg}`}
                 onClick={hasChildren ? () => setExpanded((v) => !v) : undefined}
             >
                 {/* Token */}
-                <td className="py-2.5 pr-3" style={{ paddingLeft: indentLeft }}>
+                <td
+                    className="py-2.5 pr-3"
+                    style={{
+                        paddingLeft: indentLeft,
+                        boxShadow: node.depth > 0 ? "inset 3px 0 0 rgba(249,115,22,0.25)" : undefined,
+                    }}
+                >
                     <div className="flex items-center gap-2">
                         <span
                             className="shrink-0 select-none"
@@ -131,25 +139,52 @@ export default function SubVaultRow({ node }: Props) {
                                 {node.ticker.slice(0, 1)}
                             </span>
                         )}
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-sm leading-tight" style={{ color: "var(--text-primary)" }}>
+                        <div className="flex flex-col min-w-0 max-w-[120px] sm:max-w-[240px] lg:max-w-none">
+                            <span
+                                className="text-sm leading-tight truncate"
+                                style={{ color: "var(--text-primary)" }}
+                            >
                                 {node.name}
                             </span>
-                            <span className="text-xs leading-tight truncate" style={{ color: "var(--text-secondary)" }}>
+                            <span
+                                className="text-xs leading-tight truncate"
+                                style={{ color: "var(--text-secondary)" }}
+                            >
                                 {node.subLabel || node.ticker || chainLabel(node.chain)}
                             </span>
                         </div>
                     </div>
                 </td>
 
-                {/* Balance */}
-                <td className="py-2.5 px-3 text-sm tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                    {node.rawBalance ?? "-"}
+                {/* Allocation */}
+                <td className="py-2.5 px-3 hidden lg:table-cell">
+                    {showAlloc ? (
+                        <div className="flex items-center gap-2">
+                            <div
+                                className="shrink-0"
+                                style={{ width: 56, height: 5, borderRadius: 3, background: "var(--border)", overflow: "hidden" }}
+                            >
+                                <div
+                                    style={{
+                                        width: `${Math.min(100, allocation)}%`,
+                                        height: "100%",
+                                        background: "var(--accent)",
+                                    }}
+                                />
+                            </div>
+                            <span className="text-xs tabular-nums" style={{ color: "var(--text-secondary)" }}>
+                                {allocation < 0.1 ? "<0.1" : allocation.toFixed(1)}%
+                            </span>
+                        </div>
+                    ) : null}
                 </td>
 
-                {/* Price */}
-                <td className="py-2.5 px-3 text-right text-sm tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                    {formatPrice(node.priceUSD)}
+                {/* Balance */}
+                <td
+                    className="py-2.5 px-3 text-right text-sm tabular-nums hidden md:table-cell"
+                    style={{ color: "var(--text-secondary)" }}
+                >
+                    {node.rawBalance ?? "—"}
                 </td>
 
                 {/* USD Value */}
@@ -160,52 +195,35 @@ export default function SubVaultRow({ node }: Props) {
                     {formattedValue}
                 </td>
 
+                {/* APY */}
+                <td className="py-2.5 px-3 text-right text-sm tabular-nums hidden sm:table-cell">
+                    {node.apy != null ? (
+                        <span style={{ color: "var(--positive)" }}>{(node.apy * 100).toFixed(2)}%</span>
+                    ) : (
+                        <span style={{ color: "var(--text-secondary)" }}>—</span>
+                    )}
+                </td>
+
                 {/* 24h Change */}
-                <td className="py-2.5 px-3 text-right text-sm tabular-nums" style={{ color: changeColor }}>
+                <td className="py-2.5 px-3 text-right text-sm tabular-nums hidden lg:table-cell" style={{ color: changeColor }}>
                     {formattedChange}
                 </td>
 
-                {/* Protocol */}
-                <td className="py-2.5 px-3">
-                    {node.protocolName ? (
-                        <span
-                            className="rounded px-1.5 py-0.5 text-xs"
-                            style={{ background: "rgba(249,115,22,0.12)", color: "var(--accent)" }}
-                        >
-                            {node.protocolName}
-                        </span>
-                    ) : (
-                        <span
-                            className="rounded px-1.5 py-0.5 text-xs"
-                            style={{ background: "var(--border)", color: "var(--text-secondary)" }}
-                        >
-                            {chainLabel(node.chain)}
-                        </span>
-                    )}
-                </td>
-
                 {/* Type */}
-                <td className="py-2.5 pl-3 pr-3">
-                    {typeBadge.label === "Token" ? (
-                        <span
-                            className="rounded px-1.5 py-0.5 text-xs"
-                            style={{ background: "var(--border)", color: "var(--text-secondary)" }}
-                        >
-                            Token
-                        </span>
-                    ) : (
-                        <span
-                            className="rounded px-1.5 py-0.5 text-xs font-medium whitespace-nowrap"
-                            style={{ background: typeBadge.bg, color: typeBadge.fg }}
-                        >
-                            {typeBadge.label}
-                        </span>
-                    )}
+                <td className="py-2.5 px-3 hidden sm:table-cell">
+                    <span
+                        className="rounded px-1.5 py-0.5 text-xs font-medium whitespace-nowrap"
+                        style={{ background: typeBadge.bg, color: typeBadge.fg }}
+                    >
+                        {typeBadge.label}
+                    </span>
                 </td>
             </tr>
 
             {expanded &&
-                node.children.map((child) => <SubVaultRow key={`${child.address}-${child.depth}`} node={child} />)}
+                node.children.map((child) => (
+                    <SubVaultRow key={`${child.address}-${child.depth}`} node={child} vaultTotal={vaultTotal} />
+                ))}
         </>
     );
 }

@@ -116,6 +116,8 @@ export default function VaultPage() {
 
     const totalUSD = holdings?.reduce((s, n) => s + n.balanceUSD, 0) ?? 0;
     const holdingCount = holdings?.length ?? 0;
+    // Surface the vault's net APY as a headline stat (single-vault views only).
+    const vaultApy = holdings?.length === 1 && holdings[0].nodeType === "vault" ? (holdings[0].apy ?? null) : null;
     const explorerUrl = explorerAddressUrl(chain, address);
     const explorerLabel = explorerName(chain);
 
@@ -177,7 +179,13 @@ export default function VaultPage() {
 
                 {/* Stats bar */}
                 {stats !== undefined && (
-                    <VaultStatsBar stats={stats} chain={chain} totalUSD={totalUSD} holdingCount={holdingCount} />
+                    <VaultStatsBar
+                        stats={stats}
+                        chain={chain}
+                        totalUSD={totalUSD}
+                        holdingCount={holdingCount}
+                        apy={vaultApy}
+                    />
                 )}
                 {stats === undefined && (
                     <div

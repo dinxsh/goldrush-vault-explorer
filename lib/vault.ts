@@ -135,7 +135,6 @@ async function buildMorphoTree(chain: SupportedChain, address: string, info: Vau
         assetPrice !== null && assetPrev !== null ? toFloat(raw, assetDec) * (assetPrice - assetPrev) : 0;
     const vaultUSD = assetPrice !== null ? totalAssetsFloat * assetPrice : 0;
     const vaultChange = info.totalAssets !== null ? changeOf(info.totalAssets) : 0;
-    const pctOf = (usd: number) => (vaultUSD > 0 ? (usd / vaultUSD) * 100 : 0);
 
     const children: VaultNode[] = [];
     let apyNum = 0; // Σ supplyApy × supplied, for the vault's supplied-weighted net APY
@@ -145,7 +144,6 @@ async function buildMorphoTree(chain: SupportedChain, address: string, info: Vau
         // Skip markets the vault is queued for but holds nothing in.
         if (agg.supplied === 0n) continue;
         const groupUSD = valueOf(agg.supplied);
-        const pct = pctOf(groupUSD);
 
         if (key === "idle") {
             children.push({
@@ -163,7 +161,8 @@ async function buildMorphoTree(chain: SupportedChain, address: string, info: Vau
                 decimals: assetDec,
                 protocolName: "Morpho",
                 nodeType: "market",
-                subLabel: `Unallocated · ${pct.toFixed(1)}% of vault`,
+                subLabel: "Unallocated",
+                apy: null,
             });
             continue;
         }
@@ -210,9 +209,8 @@ async function buildMorphoTree(chain: SupportedChain, address: string, info: Vau
                           decimals: assetDec,
                           protocolName: "Morpho",
                           nodeType: "market" as const,
-                          subLabel: `LLTV ${formatLltv(mk.lltv)} · ${(mk.utilization * 100).toFixed(0)}% utilized${
-                              mk.supplyApy !== null ? ` · ${(mk.supplyApy * 100).toFixed(2)}% APY` : ""
-                          }`,
+                          subLabel: `LLTV ${formatLltv(mk.lltv)} · ${(mk.utilization * 100).toFixed(0)}% utilized`,
+                          apy: mk.supplyApy,
                       }))
                 : [];
 
@@ -231,9 +229,8 @@ async function buildMorphoTree(chain: SupportedChain, address: string, info: Vau
             decimals: assetDec,
             protocolName: "Morpho",
             nodeType: "market",
-            subLabel: `${pct.toFixed(1)}% of vault${groupApy !== null ? ` · ${(groupApy * 100).toFixed(2)}% APY` : ""}${
-                funded.length > 1 ? ` · ${funded.length} markets` : ` · ${collName}`
-            }`,
+            subLabel: funded.length > 1 ? `${collName} · ${funded.length} markets` : collName,
+            apy: groupApy,
         });
     }
     children.sort((a, b) => b.balanceUSD - a.balanceUSD);
@@ -255,9 +252,10 @@ async function buildMorphoTree(chain: SupportedChain, address: string, info: Vau
         decimals: assetDec,
         protocolName: detectProtocol(info.name, info.symbol) ?? "Morpho",
         nodeType: "vault",
-        subLabel: `${children.length} positions${vaultApy !== null ? ` · ${(vaultApy * 100).toFixed(2)}% net APY` : ""}${
+        subLabel: `${children.length} positions${
             info.sharePrice !== null && assetPrice !== null ? ` · $${(info.sharePrice * assetPrice).toFixed(4)}/share` : ""
         }`,
+        apy: vaultApy,
     };
 
     return [vaultNode];

@@ -28,6 +28,8 @@ export interface VaultNode {
     nodeType?: "vault" | "market" | "token";
     // Optional secondary line, e.g. "WBTC collateral · 2 markets".
     subLabel?: string | null;
+    // Annualized supply APY for this position (0.05 = 5%); null when not applicable.
+    apy?: number | null;
 }
 
 export interface TxSummary {

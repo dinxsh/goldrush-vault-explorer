@@ -40,16 +40,19 @@ export default function SubVaultRow({ node, vaultTotal }: Props) {
     const formattedValue =
         node.balanceUSD > 0 ? node.balanceUSD.toLocaleString("en-US", { style: "currency", currency: "USD" }) : "—";
 
-    // 24h: treat sub-0.1%-of-value moves as flat so stablecoin price noise (USDC at
-    // $0.9996) doesn't read as a loss, while real moves on volatile assets still show.
-    const change = node.balance24hChange;
-    const isFlat = change === 0 || (node.balanceUSD > 0 && Math.abs(change) / node.balanceUSD < 0.001);
-    const formattedChange = isFlat
-        ? "—"
-        : change > 0
-          ? `+${change.toLocaleString("en-US", { style: "currency", currency: "USD" })}`
-          : change.toLocaleString("en-US", { style: "currency", currency: "USD" });
-    const changeColor = isFlat ? "var(--text-secondary)" : change > 0 ? "var(--positive)" : "var(--negative)";
+    // Daily yield: what this position earns per day at its current APY. Meaningful for
+    // every yield-bearing vault (Morpho), regardless of whether the underlying is a
+    // stablecoin or a volatile asset. Positions with no APY (Compound collateral, idle)
+    // show "—".
+    const dailyYield = node.apy != null && node.balanceUSD > 0 ? (node.apy * node.balanceUSD) / 365 : null;
+    const formattedYield =
+        dailyYield != null && dailyYield > 0
+            ? `+${dailyYield.toLocaleString("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                  maximumFractionDigits: dailyYield >= 100 ? 0 : 2,
+              })}`
+            : "—";
 
     // Type badge, protocol-accurate.
     const nodeType = node.nodeType ?? (hasChildren ? "vault" : "token");
@@ -204,9 +207,12 @@ export default function SubVaultRow({ node, vaultTotal }: Props) {
                     )}
                 </td>
 
-                {/* 24h Change */}
-                <td className="py-2.5 px-3 text-right text-sm tabular-nums hidden lg:table-cell" style={{ color: changeColor }}>
-                    {formattedChange}
+                {/* Daily yield */}
+                <td
+                    className="py-2.5 px-3 text-right text-sm tabular-nums hidden lg:table-cell"
+                    style={{ color: dailyYield != null && dailyYield > 0 ? "var(--positive)" : "var(--text-secondary)" }}
+                >
+                    {formattedYield}
                 </td>
 
                 {/* Type */}

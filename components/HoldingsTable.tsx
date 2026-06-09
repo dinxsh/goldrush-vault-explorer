@@ -15,7 +15,7 @@ const COLS: { label: string; align: "left" | "right"; cls: string }[] = [
     { label: "Balance", align: "right", cls: "hidden md:table-cell" },
     { label: "USD Value", align: "right", cls: "" },
     { label: "APY", align: "right", cls: "hidden sm:table-cell" },
-    { label: "24h", align: "right", cls: "hidden lg:table-cell" },
+    { label: "Daily Yield", align: "right", cls: "hidden lg:table-cell" },
     { label: "Type", align: "left", cls: "hidden sm:table-cell" },
 ];
 

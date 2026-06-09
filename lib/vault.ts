@@ -1,5 +1,15 @@
 import { getGoldRushClient, getTokenData } from "./goldrush";
-import { getVaultInfo, getMorphoMarkets, getErc20Meta, type VaultInfo } from "./rpc";
+import {
+    getVaultInfo,
+    getMorphoMarkets,
+    getErc20Meta,
+    getEulerState,
+    getCometInfo,
+    getErc20Balance,
+    type VaultInfo,
+    type MarketPosition,
+    type CometInfo,
+} from "./rpc";
 import { type SupportedChain, type VaultNode } from "@/types/vault";
 import { type Chain } from "@covalenthq/client-sdk";
 
@@ -41,6 +51,11 @@ function formatAmount(raw: bigint, decimals: number): string {
 function toFloat(raw: bigint, decimals: number): number {
     const divisor = 10n ** BigInt(decimals);
     return Number(raw / divisor) + Number(raw % divisor) / 10 ** decimals;
+}
+
+// Morpho LLTV is a WAD (1e18 = 100%). 0.86e18 -> "86%".
+function formatLltv(lltv: bigint): string {
+    return `${(Number(lltv) / 1e16).toFixed(0)}%`;
 }
 
 function detectProtocol(name: string | null, ticker?: string | null): string | null {
@@ -86,41 +101,51 @@ async function buildMorphoTree(chain: SupportedChain, address: string, info: Vau
     const missing = collateralAddrs.filter((a) => !priceMap.get(a.toLowerCase())?.symbol);
     const onchainMeta = missing.length ? await getErc20Meta(chain, missing) : new Map();
 
-    // Aggregate markets by collateral token (idle/unallocated grouped under "idle").
-    type Agg = { collateral: string | null; supplied: bigint; count: number };
+    // Group markets by collateral token, keeping each group's individual markets so we
+    // can drill into them. The idle market (no collateral) holds unallocated funds.
+    type Agg = { collateral: string | null; supplied: bigint; markets: MarketPosition[] };
     const byCollateral = new Map<string, Agg>();
     for (const mk of markets) {
         const key = mk.collateralToken?.toLowerCase() ?? "idle";
-        const agg = byCollateral.get(key) ?? { collateral: mk.collateralToken, supplied: 0n, count: 0 };
+        const agg = byCollateral.get(key) ?? { collateral: mk.collateralToken, supplied: 0n, markets: [] };
         agg.supplied += mk.suppliedAssets;
-        agg.count += 1;
+        agg.markets.push(mk);
         byCollateral.set(key, agg);
     }
 
     // Reconcile against totalAssets: funds can sit as raw asset in the vault contract
     // (not yet supplied to any market). Fold that remainder into the idle bucket so the
-    // position rows always sum to the vault's TVL — true for any MetaMorpho vault.
+    // position rows always sum to the vault's TVL - true for any MetaMorpho vault.
     if (info.totalAssets !== null) {
         let supplied = 0n;
         for (const agg of byCollateral.values()) supplied += agg.supplied;
         const residual = info.totalAssets - supplied;
-        // ignore sub-0.1%-of-TVL rounding noise from share→asset conversion
+        // ignore sub-0.1%-of-TVL rounding noise from share->asset conversion
         if (residual > 0n && residual * 1000n > info.totalAssets) {
-            const idle = byCollateral.get("idle") ?? { collateral: null, supplied: 0n, count: 0 };
+            const idle = byCollateral.get("idle") ?? { collateral: null, supplied: 0n, markets: [] };
             idle.supplied += residual;
             byCollateral.set("idle", idle);
         }
     }
 
+    // Vault USD value kept in the underlying asset so balance x price = value.
+    const totalAssetsFloat = info.totalAssets !== null ? toFloat(info.totalAssets, assetDec) : 0;
+    const valueOf = (raw: bigint) => (assetPrice !== null ? toFloat(raw, assetDec) * assetPrice : 0);
+    const changeOf = (raw: bigint) =>
+        assetPrice !== null && assetPrev !== null ? toFloat(raw, assetDec) * (assetPrice - assetPrev) : 0;
+    const vaultUSD = assetPrice !== null ? totalAssetsFloat * assetPrice : 0;
+    const vaultChange = info.totalAssets !== null ? changeOf(info.totalAssets) : 0;
+    const pctOf = (usd: number) => (vaultUSD > 0 ? (usd / vaultUSD) * 100 : 0);
+
     const children: VaultNode[] = [];
+    let apyNum = 0; // Σ supplyApy × supplied, for the vault's supplied-weighted net APY
+    let apyDen = 0;
+
     for (const [key, agg] of byCollateral) {
         // Skip markets the vault is queued for but holds nothing in.
         if (agg.supplied === 0n) continue;
-
-        const suppliedFloat = toFloat(agg.supplied, assetDec);
-        const balanceUSD = assetPrice !== null ? suppliedFloat * assetPrice : 0;
-        const change24h =
-            assetPrice !== null && assetPrev !== null ? suppliedFloat * (assetPrice - assetPrev) : 0;
+        const groupUSD = valueOf(agg.supplied);
+        const pct = pctOf(groupUSD);
 
         if (key === "idle") {
             children.push({
@@ -128,8 +153,8 @@ async function buildMorphoTree(chain: SupportedChain, address: string, info: Vau
                 name: `Idle ${assetSymbol ?? "Assets"}`,
                 ticker: assetSymbol ?? "",
                 chain,
-                balanceUSD,
-                balance24hChange: change24h,
+                balanceUSD: groupUSD,
+                balance24hChange: changeOf(agg.supplied),
                 logoUrl: assetLogo,
                 depth: 1,
                 children: [],
@@ -138,7 +163,7 @@ async function buildMorphoTree(chain: SupportedChain, address: string, info: Vau
                 decimals: assetDec,
                 protocolName: "Morpho",
                 nodeType: "market",
-                subLabel: "Unallocated liquidity",
+                subLabel: `Unallocated · ${pct.toFixed(1)}% of vault`,
             });
             continue;
         }
@@ -149,33 +174,71 @@ async function buildMorphoTree(chain: SupportedChain, address: string, info: Vau
         const collName = cd?.name ?? collSymbol;
         const collLogo = cd?.logoUrl ?? logoFallback(chain, collAddr);
 
+        // Supplied-weighted APY across the markets in this collateral group.
+        let gNum = 0;
+        let gDen = 0;
+        for (const mk of agg.markets) {
+            if (mk.supplyApy === null) continue;
+            const w = Number(mk.suppliedAssets);
+            gNum += mk.supplyApy * w;
+            gDen += w;
+        }
+        apyNum += gNum;
+        apyDen += gDen;
+        const groupApy = gDen > 0 ? gNum / gDen : null;
+
+        // Drill-down: when a collateral has multiple funded markets (different LLTV /
+        // oracle / rate), expose each as its own child row.
+        const funded = agg.markets.filter((m) => m.suppliedAssets > 0n);
+        const marketChildren: VaultNode[] =
+            funded.length > 1
+                ? funded
+                      .slice()
+                      .sort((a, b) => Number(b.suppliedAssets - a.suppliedAssets))
+                      .map((mk) => ({
+                          address: mk.id, // bytes32 market id keeps React keys unique
+                          name: `${collSymbol} / ${assetSymbol ?? ""} market`,
+                          ticker: assetSymbol ?? "",
+                          chain,
+                          balanceUSD: valueOf(mk.suppliedAssets),
+                          balance24hChange: changeOf(mk.suppliedAssets),
+                          logoUrl: collLogo,
+                          depth: 2,
+                          children: [],
+                          priceUSD: assetPrice,
+                          rawBalance: formatAmount(mk.suppliedAssets, assetDec),
+                          decimals: assetDec,
+                          protocolName: "Morpho",
+                          nodeType: "market" as const,
+                          subLabel: `LLTV ${formatLltv(mk.lltv)} · ${(mk.utilization * 100).toFixed(0)}% utilized${
+                              mk.supplyApy !== null ? ` · ${(mk.supplyApy * 100).toFixed(2)}% APY` : ""
+                          }`,
+                      }))
+                : [];
+
         children.push({
             address: collAddr,
             name: `${collSymbol} Market`,
             ticker: assetSymbol ?? "",
             chain,
-            balanceUSD,
-            balance24hChange: change24h,
+            balanceUSD: groupUSD,
+            balance24hChange: changeOf(agg.supplied),
             logoUrl: collLogo,
             depth: 1,
-            children: [],
+            children: marketChildren,
             priceUSD: assetPrice,
             rawBalance: formatAmount(agg.supplied, assetDec),
             decimals: assetDec,
             protocolName: "Morpho",
             nodeType: "market",
-            subLabel: `${collName} collateral · ${agg.count} market${agg.count > 1 ? "s" : ""}`,
+            subLabel: `${pct.toFixed(1)}% of vault${groupApy !== null ? ` · ${(groupApy * 100).toFixed(2)}% APY` : ""}${
+                funded.length > 1 ? ` · ${funded.length} markets` : ` · ${collName}`
+            }`,
         });
     }
     children.sort((a, b) => b.balanceUSD - a.balanceUSD);
 
-    // Root vault node - balance and price are kept in the underlying asset so that
-    // balance × price = USD value holds consistently with the position rows below.
-    const totalAssetsFloat = info.totalAssets !== null ? toFloat(info.totalAssets, assetDec) : 0;
-    const vaultUSD =
-        assetPrice !== null ? totalAssetsFloat * assetPrice : children.reduce((s, c) => s + c.balanceUSD, 0);
-    const vaultChange =
-        assetPrice !== null && assetPrev !== null ? totalAssetsFloat * (assetPrice - assetPrev) : 0;
+    const vaultApy = apyDen > 0 ? apyNum / apyDen : null;
 
     const vaultNode: VaultNode = {
         address: address.toLowerCase(),
@@ -192,10 +255,9 @@ async function buildMorphoTree(chain: SupportedChain, address: string, info: Vau
         decimals: assetDec,
         protocolName: detectProtocol(info.name, info.symbol) ?? "Morpho",
         nodeType: "vault",
-        subLabel:
-            info.sharePrice !== null && assetPrice !== null
-                ? `${children.length} positions · share $${(info.sharePrice * assetPrice).toFixed(4)}`
-                : `${children.length} positions`,
+        subLabel: `${children.length} positions${vaultApy !== null ? ` · ${(vaultApy * 100).toFixed(2)}% net APY` : ""}${
+            info.sharePrice !== null && assetPrice !== null ? ` · $${(info.sharePrice * assetPrice).toFixed(4)}/share` : ""
+        }`,
     };
 
     return [vaultNode];
@@ -287,6 +349,153 @@ function bumpDepth(node: VaultNode, depth: number): VaultNode {
     return { ...node, depth, children: node.children.map((c) => bumpDepth(c, depth + 1)) };
 }
 
+// ─── Euler v2 decomposition ───────────────────────────────────────────────────
+
+// An Euler v2 eVault lends a single asset; its assets split into available cash and
+// the portion lent out to borrowers. That split (and the resulting utilization) is the
+// meaningful "beyond one hop" view for a lending vault.
+async function buildEulerTree(chain: SupportedChain, address: string, info: VaultInfo): Promise<VaultNode[]> {
+    const assetAddr = info.asset.toLowerCase();
+    const assetDec = info.assetDecimals ?? 18;
+    const state = await getEulerState(chain, address);
+
+    const priceMap = await getTokenData(chain, [assetAddr]);
+    const ad = priceMap.get(assetAddr);
+    const assetPrice = ad?.price ?? null;
+    const assetPrev = ad?.prev ?? null;
+    const assetSymbol = ad?.symbol ?? info.symbol ?? null;
+    const assetLogo = ad?.logoUrl ?? logoFallback(chain, assetAddr);
+
+    const totalAssets = info.totalAssets ?? (state ? state.cash + state.borrows : 0n);
+    const valueOf = (raw: bigint) => (assetPrice !== null ? toFloat(raw, assetDec) * assetPrice : 0);
+    const changeOf = (raw: bigint) =>
+        assetPrice !== null && assetPrev !== null ? toFloat(raw, assetDec) * (assetPrice - assetPrev) : 0;
+    const vaultUSD = valueOf(totalAssets);
+    const pctOf = (usd: number) => (vaultUSD > 0 ? (usd / vaultUSD) * 100 : 0);
+
+    const children: VaultNode[] = [];
+    let utilization = 0;
+    if (state) {
+        const total = state.cash + state.borrows;
+        utilization = total > 0n ? Number(state.borrows) / Number(total) : 0;
+        const mk = (raw: bigint, name: string, sub: string): VaultNode => ({
+            address: assetAddr,
+            name,
+            ticker: assetSymbol ?? "",
+            chain,
+            balanceUSD: valueOf(raw),
+            balance24hChange: changeOf(raw),
+            logoUrl: assetLogo,
+            depth: 1,
+            children: [],
+            priceUSD: assetPrice,
+            rawBalance: formatAmount(raw, assetDec),
+            decimals: assetDec,
+            protocolName: "Euler",
+            nodeType: "market",
+            subLabel: sub,
+        });
+        children.push(mk(state.borrows, "Lent to Borrowers", `Borrowed out · ${pctOf(valueOf(state.borrows)).toFixed(1)}% of vault`));
+        children.push(mk(state.cash, `Available ${assetSymbol ?? "Liquidity"}`, `Idle cash · ${pctOf(valueOf(state.cash)).toFixed(1)}% of vault`));
+        children.sort((a, b) => b.balanceUSD - a.balanceUSD);
+    }
+
+    return [
+        {
+            address: address.toLowerCase(),
+            name: info.name ?? `${assetSymbol ?? "Unknown"} Vault`,
+            ticker: info.symbol ?? "",
+            chain,
+            balanceUSD: vaultUSD,
+            balance24hChange: changeOf(totalAssets),
+            logoUrl: assetLogo,
+            depth: 0,
+            children,
+            priceUSD: assetPrice,
+            rawBalance: formatAmount(totalAssets, assetDec),
+            decimals: assetDec,
+            protocolName: "Euler",
+            nodeType: "vault",
+            subLabel: `${(utilization * 100).toFixed(0)}% utilized${
+                info.sharePrice !== null && assetPrice !== null
+                    ? ` · $${(info.sharePrice * assetPrice).toFixed(4)}/share`
+                    : ""
+            }`,
+        },
+    ];
+}
+
+// ─── Compound v3 (Comet) decomposition ────────────────────────────────────────
+
+// A Comet is a single-asset lending market that custodies a basket of collateral
+// tokens (posted by borrowers) plus its own base-token cash. We decompose it into
+// those concrete on-chain holdings, priced via GoldRush.
+async function buildCometTree(chain: SupportedChain, address: string, comet: CometInfo): Promise<VaultNode[]> {
+    const base = comet.baseToken.toLowerCase();
+    const collAddrs = comet.collaterals.map((c) => c.token.toLowerCase());
+    const baseHeld = await getErc20Balance(chain, base, address);
+
+    const priceMap = await getTokenData(chain, [base, ...collAddrs]);
+    const missingDec = [base, ...collAddrs].filter((t) => priceMap.get(t)?.decimals == null);
+    const onchainMeta = missingDec.length ? await getErc20Meta(chain, missingDec) : new Map();
+    const decOf = (t: string) => priceMap.get(t)?.decimals ?? onchainMeta.get(t)?.decimals ?? 18;
+
+    const node = (token: string, held: bigint, isBase: boolean): VaultNode => {
+        const d = priceMap.get(token);
+        const dec = decOf(token);
+        const price = d?.price ?? null;
+        const symbol = d?.symbol ?? onchainMeta.get(token)?.symbol ?? `${token.slice(0, 6)}…`;
+        const balanceUSD = price !== null ? toFloat(held, dec) * price : 0;
+        const change = price !== null && d?.prev != null ? toFloat(held, dec) * (price - d.prev) : 0;
+        return {
+            address: token,
+            name: d?.name ?? symbol,
+            ticker: symbol,
+            chain,
+            balanceUSD,
+            balance24hChange: change,
+            logoUrl: d?.logoUrl ?? logoFallback(chain, token),
+            depth: 1,
+            children: [],
+            priceUSD: price,
+            rawBalance: formatAmount(held, dec),
+            decimals: dec,
+            protocolName: "Compound",
+            nodeType: "market",
+            subLabel: isBase ? "Base asset reserves" : "Collateral held",
+        };
+    };
+
+    const children: VaultNode[] = [];
+    if (baseHeld && baseHeld > 0n) children.push(node(base, baseHeld, true));
+    for (const c of comet.collaterals) children.push(node(c.token.toLowerCase(), c.held, false));
+    children.sort((a, b) => b.balanceUSD - a.balanceUSD);
+
+    const totalUSD = children.reduce((s, c) => s + c.balanceUSD, 0);
+    const totalChange = children.reduce((s, c) => s + c.balance24hChange, 0);
+    const baseSymbol = priceMap.get(base)?.symbol ?? "";
+
+    return [
+        {
+            address: address.toLowerCase(),
+            name: `Compound III ${baseSymbol}`.trim(),
+            ticker: baseSymbol ? `c${baseSymbol}v3` : "",
+            chain,
+            balanceUSD: totalUSD,
+            balance24hChange: totalChange,
+            logoUrl: priceMap.get(base)?.logoUrl ?? logoFallback(chain, base),
+            depth: 0,
+            children,
+            priceUSD: null,
+            rawBalance: null,
+            decimals: null,
+            protocolName: "Compound",
+            nodeType: "vault",
+            subLabel: `${children.length} assets held · ${baseSymbol} market`,
+        },
+    ];
+}
+
 // ─── Wallet / non-vault path (GoldRush balances) ──────────────────────────────
 
 // For plain wallets and non-ERC-4626 contracts, list ERC-20 holdings via GoldRush.
@@ -357,10 +566,14 @@ export async function recursiveDecompose(address: string, chain: SupportedChain,
 
     if (info?.isMorpho) {
         nodes = await buildMorphoTree(chain, address, info);
+    } else if (info?.isEuler) {
+        nodes = await buildEulerTree(chain, address, info);
     } else if (info?.isErc4626) {
         nodes = await buildErc4626Tree(chain, address, info, depth);
     } else {
-        nodes = await getWalletHoldings(chain, address, depth);
+        // Not ERC-4626 - try Compound v3 (Comet) before falling back to a wallet listing.
+        const comet = depth === 0 ? await getCometInfo(chain, address) : null;
+        nodes = comet ? await buildCometTree(chain, address, comet) : await getWalletHoldings(chain, address, depth);
     }
 
     // Only cache meaningful results - a transient RPC failure shouldn't poison the

@@ -53,6 +53,23 @@ const VAULT_ABI = parseAbi([
     "function MORPHO() view returns (address)",
     "function withdrawQueueLength() view returns (uint256)",
     "function withdrawQueue(uint256) view returns (bytes32)",
+    "function EVC() view returns (address)",
+]);
+
+// Euler v2 eVault: ERC-4626 that lends a single asset. cash = idle, totalBorrows = lent out.
+const EULER_ABI = parseAbi([
+    "function cash() view returns (uint256)",
+    "function totalBorrows() view returns (uint256)",
+]);
+
+// Compound v3 (Comet): single-asset lending market that custodies many collaterals.
+const COMET_ABI = parseAbi([
+    "function baseToken() view returns (address)",
+    "function numAssets() view returns (uint8)",
+    "function getAssetInfo(uint8) view returns (uint8 offset, address asset, address priceFeed, uint64 scale, uint64 borrowCollateralFactor, uint64 liquidateCollateralFactor, uint64 liquidationFactor, uint128 supplyCap)",
+    "function totalsCollateral(address) view returns (uint128 totalSupplyAsset, uint128 reserved)",
+    "function totalSupply() view returns (uint256)",
+    "function totalBorrow() view returns (uint256)",
 ]);
 
 // Morpho Blue singleton - the shared lending engine MetaMorpho vaults supply into.
@@ -62,13 +79,21 @@ const MORPHO_BLUE_ABI = parseAbi([
     "function position(bytes32, address) view returns (uint256 supplyShares, uint128 borrowShares, uint128 collateral)",
 ]);
 
+// Morpho's interest rate model. borrowRateView takes the market params + state and
+// returns the borrow rate per second (WAD). Supply rate = borrow × utilization × (1-fee).
+const IRM_ABI = parseAbi([
+    "function borrowRateView((address loanToken, address collateralToken, address oracle, address irm, uint256 lltv) marketParams, (uint128 totalSupplyAssets, uint128 totalSupplyShares, uint128 totalBorrowAssets, uint128 totalBorrowShares, uint128 lastUpdate, uint128 fee) market) view returns (uint256)",
+]);
+
 const ERC20_ABI = parseAbi([
     "function symbol() view returns (string)",
     "function name() view returns (string)",
     "function decimals() view returns (uint8)",
+    "function balanceOf(address) view returns (uint256)",
 ]);
 
 const ZERO = "0x0000000000000000000000000000000000000000";
+const SECONDS_PER_YEAR = 31_536_000;
 
 function lc(addr: string): `0x${string}` {
     return addr.toLowerCase() as `0x${string}`;
@@ -79,6 +104,7 @@ function lc(addr: string): `0x${string}` {
 export interface VaultInfo {
     isErc4626: boolean;
     isMorpho: boolean;
+    isEuler: boolean; // Euler v2 eVault (exposes EVC())
     morpho: string | null; // Morpho Blue singleton, if this is a MetaMorpho vault
     asset: string; // underlying asset address
     symbol: string | null;
@@ -95,6 +121,8 @@ export interface MarketPosition {
     loanToken: string;
     lltv: bigint;
     suppliedAssets: bigint; // vault's supplied assets in loanToken decimals
+    utilization: number; // 0..1, borrowed / supplied in the market
+    supplyApy: number | null; // annualized supply rate (0.05 = 5%), null if unavailable
 }
 
 // ─── Reads ──────────────────────────────────────────────────────────────────
@@ -113,12 +141,13 @@ export async function getVaultInfo(chain: SupportedChain, address: string): Prom
     }
     if (!asset || asset === ZERO) return null;
 
-    const [symbol, name, decimals, totalAssets, morpho, assetDecimals] = await Promise.all([
+    const [symbol, name, decimals, totalAssets, morpho, evc, assetDecimals] = await Promise.all([
         client.readContract({ address: addr, abi: VAULT_ABI, functionName: "symbol" }).catch(() => null),
         client.readContract({ address: addr, abi: VAULT_ABI, functionName: "name" }).catch(() => null),
         client.readContract({ address: addr, abi: VAULT_ABI, functionName: "decimals" }).catch(() => null),
         client.readContract({ address: addr, abi: VAULT_ABI, functionName: "totalAssets" }).catch(() => null),
         client.readContract({ address: addr, abi: VAULT_ABI, functionName: "MORPHO" }).catch(() => null),
+        client.readContract({ address: addr, abi: VAULT_ABI, functionName: "EVC" }).catch(() => null),
         client.readContract({ address: lc(asset), abi: ERC20_ABI, functionName: "decimals" }).catch(() => null),
     ]);
 
@@ -139,10 +168,12 @@ export async function getVaultInfo(chain: SupportedChain, address: string): Prom
     }
 
     const isMorpho = !!morpho && morpho !== ZERO;
+    const isEuler = !!evc && evc !== ZERO;
 
     return {
         isErc4626: true,
         isMorpho,
+        isEuler,
         morpho: isMorpho ? (morpho as string) : null,
         asset,
         symbol: (symbol as string) ?? null,
@@ -191,10 +222,53 @@ export async function getMorphoMarkets(
 
             const totalSupplyAssets = market[0];
             const totalSupplyShares = market[1];
+            const totalBorrowAssets = market[2];
+            const fee = market[5];
             const supplyShares = position[0];
             // Convert the vault's supply shares into underlying assets.
             const supplied = totalSupplyShares === 0n ? 0n : (supplyShares * totalSupplyAssets) / totalSupplyShares;
             const collateralToken = params[1];
+            const irm = params[3];
+
+            const utilization = totalSupplyAssets === 0n ? 0 : Number(totalBorrowAssets) / Number(totalSupplyAssets);
+
+            // Supply APY via the market's IRM. The idle market (no collateral, no IRM)
+            // earns nothing; a reverting IRM leaves APY null rather than faking a number.
+            let supplyApy: number | null = null;
+            if (irm && irm !== ZERO) {
+                try {
+                    const ratePerSec = await client.readContract({
+                        address: lc(irm),
+                        abi: IRM_ABI,
+                        functionName: "borrowRateView",
+                        args: [
+                            {
+                                loanToken: params[0],
+                                collateralToken: params[1],
+                                oracle: params[2],
+                                irm: params[3],
+                                lltv: params[4],
+                            },
+                            {
+                                totalSupplyAssets: market[0],
+                                totalSupplyShares: market[1],
+                                totalBorrowAssets: market[2],
+                                totalBorrowShares: market[3],
+                                lastUpdate: market[4],
+                                fee: market[5],
+                            },
+                        ],
+                    });
+                    const rate = Number(ratePerSec) / 1e18; // borrow rate per second
+                    const feeFrac = Number(fee) / 1e18;
+                    // continuous compounding, matching Morpho's own APY display
+                    supplyApy = Math.expm1(rate * utilization * (1 - feeFrac) * SECONDS_PER_YEAR);
+                } catch {
+                    supplyApy = null;
+                }
+            } else {
+                supplyApy = 0;
+            }
 
             return {
                 id: id as string,
@@ -202,11 +276,79 @@ export async function getMorphoMarkets(
                 loanToken: params[0],
                 lltv: params[4],
                 suppliedAssets: supplied,
+                utilization,
+                supplyApy,
             } as MarketPosition;
         })
     );
 
     return positions.filter((p): p is MarketPosition => p !== null);
+}
+
+// ERC-20 balance of a holder (used for a Comet's base-token cash).
+export async function getErc20Balance(chain: SupportedChain, token: string, holder: string): Promise<bigint | null> {
+    const client = getClient(chain);
+    return client
+        .readContract({ address: lc(token), abi: ERC20_ABI, functionName: "balanceOf", args: [lc(holder)] })
+        .catch(() => null);
+}
+
+// Euler v2 eVault liquidity split: available cash vs assets lent to borrowers.
+export async function getEulerState(
+    chain: SupportedChain,
+    address: string
+): Promise<{ cash: bigint; borrows: bigint } | null> {
+    const client = getClient(chain);
+    const addr = lc(address);
+    const [cash, borrows] = await Promise.all([
+        client.readContract({ address: addr, abi: EULER_ABI, functionName: "cash" }).catch(() => null),
+        client.readContract({ address: addr, abi: EULER_ABI, functionName: "totalBorrows" }).catch(() => null),
+    ]);
+    if (cash === null || borrows === null) return null;
+    return { cash, borrows };
+}
+
+export interface CometInfo {
+    baseToken: string;
+    collaterals: { token: string; held: bigint }[];
+}
+
+// Compound v3 (Comet) is not ERC-4626. Detect it via baseToken()/numAssets() and read
+// the collateral basket it custodies (concrete on-chain balances per asset).
+export async function getCometInfo(chain: SupportedChain, address: string): Promise<CometInfo | null> {
+    const client = getClient(chain);
+    const addr = lc(address);
+
+    let baseToken: string;
+    let numAssets: number;
+    try {
+        [baseToken, numAssets] = await Promise.all([
+            client.readContract({ address: addr, abi: COMET_ABI, functionName: "baseToken" }),
+            client.readContract({ address: addr, abi: COMET_ABI, functionName: "numAssets" }).then((n) => Number(n)),
+        ]);
+    } catch {
+        return null; // not a Comet
+    }
+    if (!baseToken || baseToken === ZERO) return null;
+
+    const collaterals = (
+        await Promise.all(
+            Array.from({ length: numAssets }, async (_, i) => {
+                const info = await client
+                    .readContract({ address: addr, abi: COMET_ABI, functionName: "getAssetInfo", args: [i] })
+                    .catch(() => null);
+                if (!info) return null;
+                const token = info[1];
+                const totals = await client
+                    .readContract({ address: addr, abi: COMET_ABI, functionName: "totalsCollateral", args: [token] })
+                    .catch(() => null);
+                const held = totals ? totals[0] : 0n;
+                return held > 0n ? { token: token as string, held } : null;
+            })
+        )
+    ).filter((c): c is { token: string; held: bigint } => c !== null);
+
+    return { baseToken, collaterals };
 }
 
 // On-chain ERC-20 symbol/decimals fallback for tokens GoldRush pricing doesn't cover.

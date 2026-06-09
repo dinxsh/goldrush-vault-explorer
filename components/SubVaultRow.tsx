@@ -54,13 +54,29 @@ export default function SubVaultRow({ node }: Props) {
     const changeColor = change > 0 ? "var(--positive)" : change < 0 ? "var(--negative)" : "var(--text-secondary)";
 
     // "Type" badge: prefer the explicit nodeType, else infer from whether it expands.
+    // Labels are protocol-accurate (a Compound Comet is not ERC-4626; an Euler/Compound
+    // position is not a Morpho Blue market).
     const nodeType = node.nodeType ?? (hasChildren ? "vault" : "token");
+    const proto = node.protocolName;
+    const blue = { bg: "rgba(59,130,246,0.12)", fg: "#60a5fa" };
+    const purple = { bg: "rgba(168,85,247,0.14)", fg: "#c084fc" };
+    const gray = { bg: "var(--border)", fg: "var(--text-secondary)" };
     const typeBadge =
         nodeType === "vault"
-            ? { label: "ERC-4626 Vault", bg: "rgba(59,130,246,0.12)", fg: "#60a5fa" }
+            ? { label: proto === "Compound" ? "Comet Market" : "ERC-4626 Vault", ...blue }
             : nodeType === "market"
-              ? { label: "Blue Market", bg: "rgba(168,85,247,0.14)", fg: "#c084fc" }
-              : { label: "Token", bg: "var(--border)", fg: "var(--text-secondary)" };
+              ? {
+                    label:
+                        proto === "Morpho"
+                            ? "Blue Market"
+                            : proto === "Euler"
+                              ? "eVault"
+                              : proto === "Compound"
+                                ? "Comet Asset"
+                                : "Position",
+                    ...purple,
+                }
+              : { label: "Token", ...gray };
 
     const indentLeft = 12 + node.depth * 16;
 

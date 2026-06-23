@@ -4,6 +4,33 @@ Based on jumper.xyz/earn patterns and DeFi aggregator standards.
 
 ---
 
+## 0. DOCUMENTATION / ONBOARDING (Optional, Phase 2)
+
+**Like QuickNode's Earn Docs**
+
+Add educational section explaining:
+- "What is Earn" — Why yield farming matters
+- "How it works" — Step-by-step deposit/withdraw
+- "Risks explained" — Smart contract, oracle, market risks
+- "Supported wallets" — MetaMask, WalletConnect, etc.
+- "Cross-chain bridging" — How to move funds between chains
+- "Fees" — Transaction costs, protocol fees
+
+**Implementation:**
+- Sidebar with navigation (left panel, collapsible on mobile)
+- Top nav link: "Earn" | "Strategies" | "Docs" | "About"
+- `/earn/docs` page with scrollspy sidebar
+- Inline examples and tooltips
+
+**User Journey:**
+1. New user lands on `/earn`
+2. Sees "Learn more →" link or modal: "New to yield farming?"
+3. Opens docs
+4. Learns what earn means
+5. Returns to `/earn` list ready to invest
+
+---
+
 ## 1. LIST VIEW (`/earn`)
 
 ### Header
@@ -48,7 +75,47 @@ Based on jumper.xyz/earn patterns and DeFi aggregator standards.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-### Cards Grid
+### View Toggle: Grid vs Table
+
+**Default: Card Grid (Discovery-Focused)**
+- 3-4 columns on desktop, 1 on mobile
+- Visual, easy to scan
+- Less data per item (name, APY, TVL, risk badge, 30d change)
+
+**Optional: Table View (Comparison-Focused, like QuickNode)**
+- Columns: CHAIN, VAULT, APY↓, TVL↑↓, 30D, ACTION
+- Sortable headers (click to toggle asc/desc)
+- Address displayed under vault name (monospace, dim)
+- "View →" link per row (right-aligned)
+- Pagination (20 per page, bottom shows "Page 1 of 6")
+- Better for power users comparing many vaults
+- Responsive: on mobile, hide 30D column, stack vertically
+
+**Table Layout:**
+```
+CHAIN      | VAULT                           | APY ↓   | TVL      | 30D    | 
+───────────┼─────────────────────────────────┼─────────┼──────────┼────────┼─────
+Ethereum   | Steakhouse USDC                 | 8.24%   | $124.5M  | +0.31% | View→
+           | 0xbeef01735c132ada46aa9aa4c...  |         |          |        |
+───────────┼─────────────────────────────────┼─────────┼──────────┼────────┼─────
+Base       | Moonwell USDC                   | 5.12%   | $85.2M   | -0.12% | View→
+           | 0xc1256Ae5FF1cf2719D493...      |         |          |        |
+───────────┼─────────────────────────────────┼─────────┼──────────┼────────┼─────
+```
+
+**Implementation:**
+```
+[🟫 Grid] [▦ Table] ← Toggle in header (next to Sort dropdown)
+```
+
+**Accessibility:**
+- Table headers are `<th>` with scope
+- Sortable headers have `aria-sort="ascending"` when active
+- Address rows marked with `<small>` or `aria-hidden="true"`
+
+---
+
+### Cards Grid (Default)
 
 **Opportunity Card Layout (Mobile: 1 col, Tablet: 2 cols, Desktop: 3-4 cols)**
 
@@ -87,10 +154,31 @@ Based on jumper.xyz/earn patterns and DeFi aggregator standards.
 - **Loading:** Skeleton cards (3-4 placeholder rows)
 - **Error:** "Unable to load opportunities. Try again." + Retry button
 
+### Sortable Columns (Table View)
+
+**When in table view:**
+- **APY** — Click to sort ascending/descending (arrow indicator ↓/↑)
+- **TVL** — Click to sort by total value locked
+- **Name** — Click to sort alphabetically
+- **Chain** — Click to filter/sort by chain
+
+**Visual Indicator:**
+```
+APY ↓  (current sort: descending)
+TVL ↕  (hoverable, clickable to sort)
+```
+
+### Info Tooltips
+
+- **TVL icon (?)** — Hover to show: "Total Value Locked in this opportunity"
+- **APY icon (?)** — Hover: "Annual Percentage Yield, updated every hour"
+- **Risk icon (?)** — Hover: Explain risk level calculation
+
 ### Pagination / Infinite Scroll
-- **MVP:** Show all (if <50), or paginate by 20
-- **UX:** Either "Load More" button OR infinite scroll on scroll
-- **Total count badge:** "(24 opportunities)"
+- **MVP (Grid):** Show all (if <50), or infinite scroll
+- **Table:** Paginate by 20 rows with "Page 1 of 6" indicator
+- **Total count:** "(110+ opportunities)"
+- **Next/Previous buttons** for table view
 
 ### Stats Carousel (Optional, Top of Page)
 ```
@@ -456,16 +544,48 @@ Cache: 60 seconds
 
 ---
 
-## 8. Implementation Checklist
+## 8. Comparison: QuickNode vs Jumper vs Ours
+
+| Feature | QuickNode | Jumper | Ours |
+|---------|-----------|--------|------|
+| **List View** | Table (sortable) | Cards | Both (toggle) ✅ |
+| **Search** | No | Yes | Yes ✅ |
+| **Filters** | No | Yes | Yes ✅ |
+| **APY Sort** | Yes (↑↓) | Yes | Yes ✅ |
+| **TVL Display** | Yes | Yes | Yes ✅ |
+| **Risk Badge** | No | Yes | Yes ✅ |
+| **Strategy Explanation** | No | Yes | Yes ✅ |
+| **Risk Factors** | No | Yes | Yes ✅ |
+| **Manager Info** | No | No | Yes ✅ |
+| **Vault Decomposition** | No | No | Yes ✅ |
+| **All Vaults (Enumeration)** | Yes (comprehensive) | Curated | Both ✅ |
+| **Educational Docs** | Yes (/docs) | No | Phase 2 ✅ |
+| **Address Display** | Yes | No | Yes ✅ |
+| **Multi-chain** | 7 chains | Multi | 6 chains ✅ |
+| **Historical APY Chart** | No | No | Phase 2 ✅ |
+
+**Key Differentiator:** 
+- **QuickNode:** Comprehensive enumeration + portfolio management (rebalancing, gas fees)
+- **Jumper:** Curated + beautiful UI + jumper-specific routing
+- **Ours:** Curated + enumeration + vault decomposition + risk breakdown + educational docs
+
+---
+
+## 9. Implementation Checklist
 
 **List View**
-- [ ] Layout: header, search, filters, grid
+- [ ] Layout: header, search, filters, grid/table toggle
 - [ ] Filter logic: chain, protocol, risk, asset, search
 - [ ] Sort logic: APY desc, TVL desc, etc.
-- [ ] Pagination or infinite scroll
+- [ ] Card view: 3-4 col grid, infinite scroll
+- [ ] **Table view:** Sortable columns (CHAIN, VAULT, APY, TVL, 30D, ACTION)
+- [ ] **Address display:** Show truncated vault address under name
+- [ ] **Info tooltips:** Hover icons for APY, TVL, risk explanations
+- [ ] Pagination (table view: 20 per page with "Page X of Y")
 - [ ] Card component with hover state
-- [ ] Mobile responsive (1 col)
+- [ ] Mobile responsive (1 col cards, table stacks vertically)
 - [ ] Empty states (loading, error, no results)
+- [ ] **View toggle button** (grid/table icons)
 
 **Detail View**
 - [ ] Fetch opportunity + live metrics
@@ -482,10 +602,23 @@ Cache: 60 seconds
 - [ ] Data model types
 - [ ] Error handling (404, 500, network)
 
+**Documentation (Phase 2)**
+- [ ] `/earn/docs` page with sidebar navigation
+- [ ] "What is Earn" section
+- [ ] "How it works" (deposit/withdraw flow)
+- [ ] "Risks explained" (smart contract, oracle, market)
+- [ ] "Supported wallets" (MetaMask, WalletConnect, etc.)
+- [ ] Inline code examples and screenshots
+- [ ] Scrollspy sidebar linking to sections
+- [ ] Modal/banner on `/earn` list: "New to yield farming? Learn more →"
+
 **Polish**
 - [ ] SEO meta tags per opportunity
 - [ ] Share buttons (Twitter, copy link)
+- [ ] Copy address button (with toast: "Copied!")
 - [ ] Loading states (skeleton, spinners)
 - [ ] Toast notifications (copy address, link copied)
-- [ ] Keyboard navigation
+- [ ] Keyboard navigation (arrow keys in table, tab through filters)
 - [ ] Focus management
+- [ ] ARIA labels for sort indicators (↓/↑)
+- [ ] Color contrast validation (a11y)

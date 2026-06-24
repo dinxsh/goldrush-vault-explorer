@@ -231,7 +231,7 @@ export default function OpportunityDetailPage() {
                 </div>
                 <div className="flex justify-between">
                   <span style={{ color: "var(--text-secondary)" }}>Asset</span>
-                  <span style={{ color: "var(--text-primary)" }}>—</span>
+                  <span style={{ color: "var(--text-primary)" }}>{opportunity.asset || "—"}</span>
                 </div>
                 <div className="flex justify-between">
                   <div className="flex items-center gap-1">

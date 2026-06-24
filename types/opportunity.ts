@@ -7,6 +7,7 @@ export interface Opportunity {
   vaultAddress: string;
   chain: SupportedChain;
   protocol: "Morpho" | "Aave" | "Euler" | "Compound" | "Yearn";
+  asset?: string;
   riskLevel: "low" | "medium" | "high";
   riskFactors: string[];
   highlights: string[];

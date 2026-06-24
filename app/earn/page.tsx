@@ -78,34 +78,40 @@ export default function EarnPage() {
           </p>
 
           {/* Stats Grid */}
-          {opportunities.length > 0 && (
-            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
-                <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Top APY</div>
-                <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
-                  {(Math.max(...opportunities.map(o => o.apy)) * 100).toFixed(1)}%
+          {!loading && opportunities.length > 0 && (() => {
+            const oppsWithApy = opportunities.filter((o) => o.apy != null);
+            const oppsWithTvl = opportunities.filter((o) => o.tvl != null);
+            if (oppsWithApy.length === 0 || oppsWithTvl.length === 0) return null;
+
+            return (
+              <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
+                  <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Top APY</div>
+                  <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
+                    {(Math.max(...oppsWithApy.map((o) => o.apy as number)) * 100).toFixed(1)}%
+                  </div>
+                </div>
+                <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
+                  <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Total TVL</div>
+                  <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
+                    ${(oppsWithTvl.reduce((sum: number, o) => sum + (o.tvl as number), 0) / 1_000_000_000).toFixed(1)}B
+                  </div>
+                </div>
+                <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
+                  <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Avg APY</div>
+                  <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
+                    {(oppsWithApy.reduce((sum: number, o) => sum + (o.apy as number), 0) / oppsWithApy.length * 100).toFixed(1)}%
+                  </div>
+                </div>
+                <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
+                  <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Available Chains</div>
+                  <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
+                    {new Set(opportunities.map((o) => o.chain)).size}
+                  </div>
                 </div>
               </div>
-              <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
-                <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Total TVL</div>
-                <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
-                  ${(opportunities.reduce((sum, o) => sum + o.tvl, 0) / 1_000_000_000).toFixed(1)}B
-                </div>
-              </div>
-              <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
-                <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Avg APY</div>
-                <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
-                  {(opportunities.reduce((sum, o) => sum + o.apy, 0) / opportunities.length * 100).toFixed(1)}%
-                </div>
-              </div>
-              <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
-                <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Available Chains</div>
-                <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
-                  {new Set(opportunities.map(o => o.chain)).size}
-                </div>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 

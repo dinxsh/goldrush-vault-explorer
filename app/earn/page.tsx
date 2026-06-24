@@ -54,7 +54,7 @@ export default function EarnPage() {
     }
 
     fetchOpportunities();
-  }, [chain, protocol, riskLevel, search, sort, addToast]);
+  }, [chain, protocol, riskLevel, search, sort]);
 
   function updateFilters(newParams: Record<string, string | undefined>) {
     const params = new URLSearchParams(searchParams);

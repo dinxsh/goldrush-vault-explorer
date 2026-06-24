@@ -11,6 +11,8 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
     riskLevel: "low",
     riskFactors: ["smart contract", "oracle", "market risk"],
     highlights: ["High APY", "Battle-tested", "Active management"],
+    apy: 0.0825,
+    tvl: 285_000_000,
   },
   "steakhouse-usdt-eth": {
     slug: "steakhouse-usdt-eth",
@@ -22,6 +24,8 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
     riskLevel: "low",
     riskFactors: ["smart contract", "oracle"],
     highlights: ["Established vault", "High liquidity", "Transparent management"],
+    apy: 0.0812,
+    tvl: 156_000_000,
   },
   "gauntlet-weth-core-eth": {
     slug: "gauntlet-weth-core-eth",
@@ -33,6 +37,8 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
     riskLevel: "medium",
     riskFactors: ["smart contract", "oracle", "lrt collateral"],
     highlights: ["LRT exposure", "Quantified risk", "Professional management"],
+    apy: 0.0634,
+    tvl: 89_400_000,
   },
   "gauntlet-usdc-core-eth": {
     slug: "gauntlet-usdc-core-eth",
@@ -44,6 +50,8 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
     riskLevel: "low",
     riskFactors: ["smart contract", "oracle"],
     highlights: ["Risk-optimised", "Institutional-grade", "Diversified allocation"],
+    apy: 0.0795,
+    tvl: 412_000_000,
   },
   "moonwell-usdc-base": {
     slug: "moonwell-usdc-base",
@@ -55,6 +63,8 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
     riskLevel: "low",
     riskFactors: ["smart contract", "oracle"],
     highlights: ["Base-native", "Low fees", "Community governance"],
+    apy: 0.0756,
+    tvl: 78_500_000,
   },
   "re7-weth-eth": {
     slug: "re7-weth-eth",
@@ -66,6 +76,8 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
     riskLevel: "medium",
     riskFactors: ["smart contract", "oracle", "strategy risk"],
     highlights: ["ETH-focused", "Specialized strategy", "Active rebalancing"],
+    apy: 0.0549,
+    tvl: 125_000_000,
   },
 };
 

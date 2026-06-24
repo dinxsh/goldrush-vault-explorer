@@ -18,10 +18,18 @@ export async function GET(
       return NextResponse.json({ error: "Opportunity not found" }, { status: 404 });
     }
 
-    // Fetch live vault data
-    const vaultData = await recursiveDecompose(opportunity.vaultAddress, opportunity.chain as SupportedChain);
-    const rootNode = vaultData[0];
+    // Fetch live vault data with timeout
+    let vaultData;
+    try {
+      vaultData = await Promise.race([
+        recursiveDecompose(opportunity.vaultAddress, opportunity.chain as SupportedChain),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8000))
+      ]);
+    } catch (err) {
+      return NextResponse.json({ error: "Failed to fetch vault data" }, { status: 500 });
+    }
 
+    const rootNode = (vaultData as any[])[0];
     if (!rootNode) {
       return NextResponse.json({ error: "Failed to fetch vault data" }, { status: 500 });
     }

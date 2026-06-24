@@ -24,29 +24,16 @@ export async function GET(req: NextRequest) {
       search,
     });
 
-    // Fetch live data for each opportunity (parallel)
-    const withMetrics = await Promise.all(
-      opportunities.map(async (opp) => {
-        const vaultData = await recursiveDecompose(opp.vaultAddress, opp.chain as SupportedChain);
-        const rootNode = vaultData[0];
-        return {
-          ...opp,
-          apy: rootNode?.apy,
-          tvl: rootNode?.balanceUSD,
-        };
-      })
-    );
-
-    // Sort by APY/TVL if requested
-    let sorted = withMetrics;
+    // Sort opportunities
+    let sorted = opportunities;
     if (sortBy === "apy-desc") {
-      sorted = [...withMetrics].sort((a, b) => (b.apy || 0) - (a.apy || 0));
+      sorted = [...opportunities].sort((a, b) => (b.apy || 0) - (a.apy || 0));
     } else if (sortBy === "apy-asc") {
-      sorted = [...withMetrics].sort((a, b) => (a.apy || 0) - (b.apy || 0));
+      sorted = [...opportunities].sort((a, b) => (a.apy || 0) - (b.apy || 0));
     } else if (sortBy === "tvl-desc") {
-      sorted = [...withMetrics].sort((a, b) => (b.tvl || 0) - (a.tvl || 0));
+      sorted = [...opportunities].sort((a, b) => (b.tvl || 0) - (a.tvl || 0));
     } else if (sortBy === "name") {
-      sorted = [...withMetrics].sort((a, b) => a.name.localeCompare(b.name));
+      sorted = [...opportunities].sort((a, b) => a.name.localeCompare(b.name));
     }
 
     return NextResponse.json({

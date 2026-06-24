@@ -151,7 +151,7 @@ export default function HomePage() {
                         <div className="w-full border-t" style={{ borderColor: "var(--border)" }} />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase" style={{ background: "var(--card)" }}>
-                        <span style={{ color: "var(--text-secondary)", paddingX: "8px" }}>Or</span>
+                        <span style={{ color: "var(--text-secondary)", paddingLeft: "8px", paddingRight: "8px" }}>Or</span>
                     </div>
                 </div>
 

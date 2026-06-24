@@ -145,6 +145,28 @@ export default function HomePage() {
                     Explore →
                 </button>
 
+                {/* Discover Opportunities Link */}
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center" style={{ borderColor: "var(--border)" }}>
+                        <div className="w-full border-t" style={{ borderColor: "var(--border)" }} />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase" style={{ background: "var(--card)" }}>
+                        <span style={{ color: "var(--text-secondary)", paddingX: "8px" }}>Or</span>
+                    </div>
+                </div>
+
+                <button
+                    onClick={() => window.location.href = "/earn"}
+                    className="w-full rounded px-4 py-3 text-sm font-semibold transition-colors hover:border-[var(--accent)]"
+                    style={{
+                        background: "transparent",
+                        borderColor: "var(--border)",
+                        color: "var(--text-secondary)",
+                    }}
+                >
+                    Discover Opportunities
+                </button>
+
                 {/* Presets */}
                 <div className="flex flex-col gap-3">
                     <span

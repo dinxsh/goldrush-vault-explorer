@@ -1,13 +1,10 @@
 import { type Opportunity } from "@/types/opportunity";
-import Link from "next/link";
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
-  apy?: number | null;
-  tvl?: number;
 }
 
-export default function OpportunityCard({ opportunity, apy, tvl }: OpportunityCardProps) {
+export default function OpportunityCard({ opportunity }: OpportunityCardProps) {
   const riskColor =
     opportunity.riskLevel === "low"
       ? "rgba(34, 197, 94, 0.12)"
@@ -23,36 +20,37 @@ export default function OpportunityCard({ opportunity, apy, tvl }: OpportunityCa
         : "#ef4444";
 
   return (
-    <Link href={`/earn/${opportunity.slug}`}>
-      <button
-        className="w-full rounded border p-4 hover:border-[var(--accent)] transition-colors text-left group"
-        style={{ borderColor: "var(--border)", background: "var(--card)" }}
-      >
-        {/* Header with badges */}
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex-1">
-            <h3 className="font-semibold text-sm group-hover:text-[var(--accent)] transition-colors" style={{ color: "var(--text-primary)" }}>
-              {opportunity.name}
-            </h3>
-            <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
-              {opportunity.description}
-            </p>
-          </div>
-          <div className="shrink-0 flex gap-1.5">
-            <span className="rounded px-2 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(249,115,22,0.12)", color: "var(--accent)" }}>
-              {opportunity.protocol}
-            </span>
-            <span className="rounded px-2 py-0.5 text-[10px] font-semibold" style={{ background: riskColor, color: riskTextColor }}>
-              {opportunity.riskLevel}
-            </span>
-          </div>
+    <div
+      className="rounded border p-4 hover:border-[var(--accent)] transition-colors text-left group cursor-pointer h-full flex flex-col"
+      style={{ borderColor: "var(--border)", background: "var(--card)" }}
+    >
+      {/* Header with badges */}
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="flex-1">
+          <h3 className="font-semibold text-sm group-hover:text-[var(--accent)] transition-colors" style={{ color: "var(--text-primary)" }}>
+            {opportunity.name}
+          </h3>
+          <p className="text-xs mt-1 line-clamp-2" style={{ color: "var(--text-secondary)" }}>
+            {opportunity.description}
+          </p>
         </div>
+        <div className="shrink-0 flex gap-1.5">
+          <span className="rounded px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap" style={{ background: "rgba(249,115,22,0.12)", color: "var(--accent)" }}>
+            {opportunity.protocol}
+          </span>
+          <span className="rounded px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap" style={{ background: riskColor, color: riskTextColor }}>
+            {opportunity.riskLevel}
+          </span>
+        </div>
+      </div>
 
-        {/* Metrics */}
-        <div className="flex gap-4 items-baseline">
+      {/* Metrics - grow to fill space */}
+      <div className="flex-1 flex flex-col justify-end">
+        {/* Main metrics */}
+        <div className="flex gap-4 items-baseline mb-2">
           <div>
             <div className="text-2xl font-bold" style={{ color: "var(--accent)" }}>
-              {apy !== null && apy !== undefined ? `${(apy * 100).toFixed(2)}%` : "—"}
+              —
             </div>
             <div className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: "var(--text-secondary)" }}>
               APY
@@ -60,14 +58,20 @@ export default function OpportunityCard({ opportunity, apy, tvl }: OpportunityCa
           </div>
           <div>
             <div className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-              ${(tvl ? tvl / 1_000_000 : 0).toFixed(1)}M
+              —
             </div>
             <div className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: "var(--text-secondary)" }}>
               TVL
             </div>
           </div>
         </div>
-      </button>
-    </Link>
+
+        {/* Secondary metrics */}
+        <div className="text-xs flex justify-between" style={{ color: "var(--text-secondary)" }}>
+          <span>—</span>
+          <span>View →</span>
+        </div>
+      </div>
+    </div>
   );
 }

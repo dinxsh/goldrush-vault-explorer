@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Resolve infinite fetch loop in opportunities page caused by recreating `addToast` function on every render
 - Prevent repeated API requests to `/api/opportunities` endpoint
 - Fix Toast hook to use `useCallback` for stable function references
+- Display asset name in opportunity detail page Quick Facts section
 
 ## [0.1.0] - 2026-06-24
 

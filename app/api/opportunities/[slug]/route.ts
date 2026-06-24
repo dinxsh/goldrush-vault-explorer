@@ -20,28 +20,29 @@ export async function GET(
 
     // Fetch live vault data with timeout
     let vaultData;
+    let apyChange24h = 0;
+    let tvl = opportunity.tvl || 0;
+
     try {
       vaultData = await Promise.race([
         recursiveDecompose(opportunity.vaultAddress, opportunity.chain as SupportedChain),
         new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8000))
       ]);
+
+      const rootNode = (vaultData as any[])[0];
+      if (rootNode) {
+        tvl = rootNode.balanceUSD || tvl;
+        apyChange24h = rootNode.balanceUSD > 0 ? rootNode.balance24hChange / rootNode.balanceUSD : 0;
+      }
     } catch (err) {
-      return NextResponse.json({ error: "Failed to fetch vault data" }, { status: 500 });
+      // Continue with static data if vault fetch fails
     }
 
-    const rootNode = (vaultData as any[])[0];
-    if (!rootNode) {
-      return NextResponse.json({ error: "Failed to fetch vault data" }, { status: 500 });
-    }
-
-    // Calculate 24h change percentage (relative to TVL)
-    const apyChange24h = rootNode.balanceUSD > 0 ? rootNode.balance24hChange / rootNode.balanceUSD : 0;
-
-    // Build response with live metrics (no fallbacks - real data only)
+    // Build response with live metrics, fallback to static data if unavailable
     const response: OpportunityWithMetrics = {
       ...opportunity,
-      apy: rootNode.apy ?? null,
-      tvl: rootNode.balanceUSD,
+      apy: opportunity.apy ?? null,
+      tvl: tvl,
       apyChange24h: apyChange24h,
       updatedAt: Date.now(),
     };

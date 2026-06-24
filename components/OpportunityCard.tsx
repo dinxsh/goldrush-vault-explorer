@@ -50,7 +50,7 @@ export default function OpportunityCard({ opportunity }: OpportunityCardProps) {
         <div className="flex gap-4 items-baseline mb-2">
           <div>
             <div className="text-2xl font-bold" style={{ color: "var(--accent)" }}>
-              —
+              {opportunity.apy ? `${(opportunity.apy * 100).toFixed(2)}%` : "—"}
             </div>
             <div className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: "var(--text-secondary)" }}>
               APY
@@ -58,7 +58,7 @@ export default function OpportunityCard({ opportunity }: OpportunityCardProps) {
           </div>
           <div>
             <div className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-              —
+              {opportunity.tvl ? `$${(opportunity.tvl / 1_000_000).toFixed(1)}M` : "—"}
             </div>
             <div className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: "var(--text-secondary)" }}>
               TVL
@@ -68,7 +68,7 @@ export default function OpportunityCard({ opportunity }: OpportunityCardProps) {
 
         {/* Secondary metrics */}
         <div className="text-xs flex justify-between" style={{ color: "var(--text-secondary)" }}>
-          <span>—</span>
+          <span>{opportunity.riskLevel}</span>
           <span>View →</span>
         </div>
       </div>

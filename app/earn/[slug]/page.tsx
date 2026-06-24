@@ -3,16 +3,17 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import InfoTooltip from "@/components/InfoTooltip";
+import { ToastContainer, useToast } from "@/components/Toast";
 import { type OpportunityWithMetrics } from "@/types/opportunity";
 
 export default function OpportunityDetailPage() {
   const router = useRouter();
   const params = useParams();
   const slug = typeof params.slug === "string" ? params.slug : params.slug?.[0] || "";
+  const { toasts, addToast, removeToast } = useToast();
 
   const [opportunity, setOpportunity] = useState<OpportunityWithMetrics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchOpportunity() {
@@ -22,16 +23,16 @@ export default function OpportunityDetailPage() {
         if (!response.ok) throw new Error("Opportunity not found");
         const data = await response.json();
         setOpportunity(data);
-        setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load opportunity");
+        const message = err instanceof Error ? err.message : "Failed to load opportunity";
+        addToast(message, "error");
       } finally {
         setLoading(false);
       }
     }
 
     if (slug) fetchOpportunity();
-  }, [slug]);
+  }, [slug, addToast]);
 
   if (loading) {
     return (
@@ -44,13 +45,13 @@ export default function OpportunityDetailPage() {
     );
   }
 
-  if (error || !opportunity) {
+  if (!loading && !opportunity) {
     return (
       <main className="flex min-h-screen items-center justify-center px-4 py-12" style={{ background: "var(--bg)" }}>
         <div className="text-center max-w-sm">
           <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Not Found</h1>
           <p className="mt-2" style={{ color: "var(--text-secondary)" }}>
-            {error || "This opportunity could not be found."}
+            This opportunity could not be found.
           </p>
           <button
             onClick={() => router.push("/earn")}
@@ -60,6 +61,7 @@ export default function OpportunityDetailPage() {
             Back to Opportunities
           </button>
         </div>
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
       </main>
     );
   }
@@ -268,6 +270,9 @@ export default function OpportunityDetailPage() {
           </button>
         </div>
       </div>
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </main>
   );
 }

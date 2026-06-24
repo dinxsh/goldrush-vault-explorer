@@ -26,12 +26,15 @@ export async function GET(
       return NextResponse.json({ error: "Failed to fetch vault data" }, { status: 500 });
     }
 
-    // Build response with live metrics
+    // Calculate 24h change percentage (relative to TVL)
+    const apyChange24h = rootNode.balanceUSD > 0 ? rootNode.balance24hChange / rootNode.balanceUSD : 0;
+
+    // Build response with live metrics (no fallbacks - real data only)
     const response: OpportunityWithMetrics = {
       ...opportunity,
-      apy: rootNode.apy || null,
+      apy: rootNode.apy,
       tvl: rootNode.balanceUSD,
-      apyChange24h: rootNode.balance24hChange,
+      apyChange24h: apyChange24h,
       updatedAt: Date.now(),
     };
 

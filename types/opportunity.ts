@@ -10,6 +10,8 @@ export interface Opportunity {
   riskLevel: "low" | "medium" | "high";
   riskFactors: string[];
   highlights: string[];
+  apy?: number;
+  tvl?: number;
 }
 
 export interface OpportunityWithMetrics extends Opportunity {

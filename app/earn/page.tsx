@@ -6,16 +6,17 @@ import OpportunityCard from "@/components/OpportunityCard";
 import OpportunityFilters from "@/components/OpportunityFilters";
 import ViewToggle from "@/components/ViewToggle";
 import OpportunityTable from "@/components/OpportunityTable";
+import { ToastContainer, useToast } from "@/components/Toast";
 import { type Opportunity } from "@/types/opportunity";
 import { type SupportedChain } from "@/types/vault";
 
 export default function EarnPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toasts, addToast, removeToast } = useToast();
 
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<"grid" | "table">("grid");
   const [page, setPage] = useState(1);
 
@@ -43,9 +44,9 @@ export default function EarnPage() {
 
         const data = await response.json();
         setOpportunities(data.opportunities || []);
-        setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+        const message = err instanceof Error ? err.message : "Failed to load opportunities";
+        addToast(message, "error");
         setOpportunities([]);
       } finally {
         setLoading(false);
@@ -53,7 +54,7 @@ export default function EarnPage() {
     }
 
     fetchOpportunities();
-  }, [chain, protocol, riskLevel, search, sort]);
+  }, [chain, protocol, riskLevel, search, sort, addToast]);
 
   function updateFilters(newParams: Record<string, string | undefined>) {
     const params = new URLSearchParams(searchParams);
@@ -111,15 +112,6 @@ export default function EarnPage() {
             </div>
           )}
 
-          {/* Error State */}
-          {error && !loading && (
-            <div
-              className="mt-6 rounded border px-4 py-3 text-sm"
-              style={{ background: "rgba(239,68,68,0.08)", borderColor: "var(--negative)", color: "var(--negative)" }}
-            >
-              {error}
-            </div>
-          )}
 
           {/* Empty State */}
           {!loading && !error && opportunities.length === 0 && (
@@ -158,6 +150,9 @@ export default function EarnPage() {
           )}
         </div>
       </div>
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </main>
   );
 }

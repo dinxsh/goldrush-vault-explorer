@@ -68,14 +68,44 @@ export default function EarnPage() {
   return (
     <main className="flex min-h-screen flex-col" style={{ background: "var(--bg)" }}>
       {/* Header */}
-      <div className="border-b px-4 py-6 sm:px-6 lg:px-8" style={{ borderColor: "var(--border)" }}>
+      <div className="border-b px-4 py-8 sm:px-6 lg:px-8" style={{ borderColor: "var(--border)" }}>
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
-            Earn Opportunities
+          <h1 className="text-4xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
+            Maximize Your Yield
           </h1>
           <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-            Discover vetted yield opportunities across DeFi protocols
+            {opportunities.length > 0 && `${opportunities.length} opportunities`} across multiple chains and protocols
           </p>
+
+          {/* Stats Grid */}
+          {opportunities.length > 0 && (
+            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
+                <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Top APY</div>
+                <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
+                  {(Math.max(...opportunities.map(o => o.apy)) * 100).toFixed(1)}%
+                </div>
+              </div>
+              <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
+                <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Total TVL</div>
+                <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
+                  ${(opportunities.reduce((sum, o) => sum + o.tvl, 0) / 1_000_000_000).toFixed(1)}B
+                </div>
+              </div>
+              <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
+                <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Avg APY</div>
+                <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
+                  {(opportunities.reduce((sum, o) => sum + o.apy, 0) / opportunities.length * 100).toFixed(1)}%
+                </div>
+              </div>
+              <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
+                <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Available Chains</div>
+                <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
+                  {new Set(opportunities.map(o => o.chain)).size}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

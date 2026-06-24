@@ -28,7 +28,7 @@ export default function Navbar() {
           </div>
 
           {/* Nav Links */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 sm:gap-6">
             <Link
               href="/"
               className="text-xs transition-colors hover:text-[var(--accent)]"
@@ -42,6 +42,13 @@ export default function Navbar() {
               style={{ color: "var(--text-secondary)" }}
             >
               Opportunities
+            </Link>
+            <Link
+              href="/docs"
+              className="text-xs transition-colors hover:text-[var(--accent)]"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Docs
             </Link>
           </div>
         </div>

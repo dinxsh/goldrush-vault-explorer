@@ -6,7 +6,29 @@ export interface Opportunity {
   description: string;
   vaultAddress: string;
   chain: SupportedChain;
-  protocol: "Morpho" | "Aave" | "Euler" | "Compound" | "Yearn" | "Curve" | "Lido" | "Rocket Pool";
+  protocol:
+    | "Morpho"
+    | "Aave"
+    | "Euler"
+    | "Compound"
+    | "Yearn"
+    | "Curve"
+    | "Lido"
+    | "Rocket Pool"
+    | "Pendle"
+    | "Convex"
+    | "Balancer"
+    | "Uniswap"
+    | "Gearbox"
+    | "EigenLayer"
+    | "Sommelier"
+    | "GMX"
+    | "Camelot"
+    | "Radiant"
+    | "Beethoven"
+    | "Aerodrome"
+    | "QuickSwap"
+    | "Moonwell";
   asset?: string;
   riskLevel: "low" | "medium" | "high";
   riskFactors: string[];

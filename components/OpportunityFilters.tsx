@@ -7,6 +7,8 @@ interface OpportunityFiltersProps {
   riskLevel?: string;
   search: string;
   sort: string;
+  minApy?: number;
+  maxApy?: number;
   onFilterChange: (filters: Record<string, string | undefined>) => void;
 }
 
@@ -16,15 +18,37 @@ const CHAINS: { value: SupportedChain; label: string }[] = [
   { value: "matic-mainnet", label: "Polygon" },
   { value: "arbitrum-mainnet", label: "Arbitrum" },
   { value: "optimism-mainnet", label: "Optimism" },
-  { value: "bsc-mainnet", label: "BNB Chain" },
+  { value: "avalanche-mainnet", label: "Avalanche" },
 ];
 
-const PROTOCOLS = ["Morpho", "Aave", "Euler", "Compound", "Yearn"];
+const PROTOCOLS = [
+  "Morpho",
+  "Aave",
+  "Curve",
+  "Yearn",
+  "Compound",
+  "Lido",
+  "Rocket Pool",
+  "Pendle",
+  "Convex",
+  "Balancer",
+  "Uniswap",
+  "Gearbox",
+  "EigenLayer",
+  "Sommelier",
+  "GMX",
+  "Camelot",
+  "Radiant",
+  "Beethoven",
+  "Aerodrome",
+  "QuickSwap",
+];
 const RISK_LEVELS = ["low", "medium", "high"];
 const SORT_OPTIONS = [
   { value: "apy-desc", label: "Best APY" },
   { value: "apy-asc", label: "Lowest APY" },
   { value: "tvl-desc", label: "Highest TVL" },
+  { value: "tvl-asc", label: "Lowest TVL" },
   { value: "name", label: "Name A-Z" },
 ];
 
@@ -34,9 +58,13 @@ export default function OpportunityFilters({
   riskLevel,
   search,
   sort,
+  minApy,
+  maxApy,
   onFilterChange,
 }: OpportunityFiltersProps) {
   const [searchValue, setSearchValue] = useState(search);
+  const [minApyValue, setMinApyValue] = useState(minApy ? (minApy * 100).toString() : "");
+  const [maxApyValue, setMaxApyValue] = useState(maxApy ? (maxApy * 100).toString() : "");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,6 +87,20 @@ export default function OpportunityFilters({
 
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     onFilterChange({ sort: e.target.value });
+  };
+
+  const handleMinApyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMinApyValue(value);
+    const numValue = value ? (parseFloat(value) / 100).toString() : undefined;
+    onFilterChange({ minApy: numValue });
+  };
+
+  const handleMaxApyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMaxApyValue(value);
+    const numValue = value ? (parseFloat(value) / 100).toString() : undefined;
+    onFilterChange({ maxApy: numValue });
   };
 
   return (
@@ -139,6 +181,40 @@ export default function OpportunityFilters({
               </option>
             ))}
           </select>
+
+          {/* APY Range Filter */}
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="Min APY %"
+              value={minApyValue}
+              onChange={handleMinApyChange}
+              min="0"
+              max="100"
+              step="0.1"
+              className="w-20 rounded border px-2 py-2 text-xs outline-none transition-colors focus:border-[var(--accent)]"
+              style={{
+                background: "var(--card)",
+                color: "var(--text-primary)",
+                borderColor: minApyValue ? "var(--accent)" : "var(--border)",
+              }}
+            />
+            <input
+              type="number"
+              placeholder="Max APY %"
+              value={maxApyValue}
+              onChange={handleMaxApyChange}
+              min="0"
+              max="100"
+              step="0.1"
+              className="w-20 rounded border px-2 py-2 text-xs outline-none transition-colors focus:border-[var(--accent)]"
+              style={{
+                background: "var(--card)",
+                color: "var(--text-primary)",
+                borderColor: maxApyValue ? "var(--accent)" : "var(--border)",
+              }}
+            />
+          </div>
         </div>
 
         {/* Sort Dropdown */}
@@ -161,7 +237,7 @@ export default function OpportunityFilters({
       </div>
 
       {/* Active Filters Badge */}
-      {(chain || protocol || riskLevel || search) && (
+      {(chain || protocol || riskLevel || search || minApyValue || maxApyValue) && (
         <div className="mt-3 flex flex-wrap gap-2">
           {chain && (
             <button
@@ -188,6 +264,30 @@ export default function OpportunityFilters({
               style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
             >
               {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)} Risk ✕
+            </button>
+          )}
+          {minApyValue && (
+            <button
+              onClick={() => {
+                setMinApyValue("");
+                onFilterChange({ minApy: undefined });
+              }}
+              className="rounded-full border px-3 py-1 text-xs transition-colors hover:border-[var(--accent)]"
+              style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
+            >
+              Min {minApyValue}% ✕
+            </button>
+          )}
+          {maxApyValue && (
+            <button
+              onClick={() => {
+                setMaxApyValue("");
+                onFilterChange({ maxApy: undefined });
+              }}
+              className="rounded-full border px-3 py-1 text-xs transition-colors hover:border-[var(--accent)]"
+              style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
+            >
+              Max {maxApyValue}% ✕
             </button>
           )}
         </div>

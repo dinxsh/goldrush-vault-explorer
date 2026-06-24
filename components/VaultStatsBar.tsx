@@ -17,6 +17,7 @@ const CHAIN_LABELS: Record<SupportedChain, string> = {
     "arbitrum-mainnet": "Arbitrum",
     "optimism-mainnet": "Optimism",
     "bsc-mainnet": "BNB Chain",
+    "avalanche-mainnet": "Avalanche",
 };
 
 function shortDate(iso: string | null): string {

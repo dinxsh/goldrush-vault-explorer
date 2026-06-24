@@ -14,6 +14,7 @@ const PUBLIC_RPCS: Record<SupportedChain, string[]> = {
     "arbitrum-mainnet": ["https://arbitrum-one-rpc.publicnode.com", "https://arbitrum.meowrpc.com"],
     "optimism-mainnet": ["https://optimism-rpc.publicnode.com", "https://optimism.meowrpc.com"],
     "bsc-mainnet": ["https://bsc-rpc.publicnode.com", "https://bsc.meowrpc.com"],
+    "avalanche-mainnet": ["https://avalanche-c-chain-rpc.publicnode.com", "https://avax.meowrpc.com"],
 };
 
 const clients = new Map<SupportedChain, PublicClient>();

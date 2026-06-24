@@ -7,6 +7,7 @@ const EXPLORER_BASE: Record<SupportedChain, string> = {
     "arbitrum-mainnet": "https://arbiscan.io",
     "optimism-mainnet": "https://optimistic.etherscan.io",
     "bsc-mainnet": "https://bscscan.com",
+    "avalanche-mainnet": "https://snowtrace.io",
 };
 
 const EXPLORER_NAME: Record<SupportedChain, string> = {
@@ -16,6 +17,7 @@ const EXPLORER_NAME: Record<SupportedChain, string> = {
     "arbitrum-mainnet": "Arbiscan",
     "optimism-mainnet": "Optimistic Etherscan",
     "bsc-mainnet": "BscScan",
+    "avalanche-mainnet": "Snowtrace",
 };
 
 export function explorerTxUrl(chain: SupportedChain, hash: string): string {

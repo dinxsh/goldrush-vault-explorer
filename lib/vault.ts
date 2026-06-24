@@ -27,6 +27,7 @@ const CHAIN_IDS: Record<SupportedChain, number> = {
     "arbitrum-mainnet": 42161,
     "optimism-mainnet": 10,
     "bsc-mainnet": 56,
+    "avalanche-mainnet": 43114,
 };
 
 const MAX_DEPTH = 3;

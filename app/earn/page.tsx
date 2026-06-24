@@ -10,15 +10,32 @@ import { ToastContainer, useToast } from "@/components/Toast";
 import { type Opportunity } from "@/types/opportunity";
 import { type SupportedChain } from "@/types/vault";
 
+interface PaginationData {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+interface ApiError {
+  error: string;
+  errorCode: string;
+  timestamp: string;
+  suggestedAction?: string;
+}
+
 export default function EarnPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toasts, addToast, removeToast } = useToast();
 
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [pagination, setPagination] = useState<PaginationData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<ApiError | null>(null);
   const [view, setView] = useState<"grid" | "table">("grid");
-  const [page, setPage] = useState(1);
 
   // Filter state from URL
   const chain = (searchParams.get("chain") as SupportedChain) || undefined;
@@ -26,35 +43,59 @@ export default function EarnPage() {
   const riskLevel = searchParams.get("risk") || undefined;
   const search = searchParams.get("q") || "";
   const sort = searchParams.get("sort") || "apy-desc";
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const limit = parseInt(searchParams.get("limit") || "20", 10);
+  const minApy = searchParams.get("minApy") ? parseFloat(searchParams.get("minApy")!) : undefined;
+  const maxApy = searchParams.get("maxApy") ? parseFloat(searchParams.get("maxApy")!) : undefined;
 
   // Fetch opportunities
   useEffect(() => {
     async function fetchOpportunities() {
       try {
         setLoading(true);
+        setError(null);
         const params = new URLSearchParams();
         if (chain) params.append("chain", chain);
         if (protocol) params.append("protocol", protocol);
         if (riskLevel) params.append("riskLevel", riskLevel);
         if (search) params.append("q", search);
+        if (minApy !== undefined) params.append("minApy", minApy.toString());
+        if (maxApy !== undefined) params.append("maxApy", maxApy.toString());
         params.append("sort", sort);
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
 
         const response = await fetch(`/api/opportunities?${params}`);
-        if (!response.ok) throw new Error("Failed to fetch opportunities");
-
         const data = await response.json();
+
+        if (!response.ok) {
+          setError(data);
+          setOpportunities([]);
+          setPagination(null);
+          addToast(data.error || "Failed to fetch opportunities", "error");
+          return;
+        }
+
         setOpportunities(data.opportunities || []);
+        setPagination(data.pagination || null);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to load opportunities";
-        addToast(message, "error");
+        setError({
+          error: message,
+          errorCode: "NETWORK_ERROR",
+          timestamp: new Date().toISOString(),
+          suggestedAction: "Check your internet connection and try again.",
+        });
         setOpportunities([]);
+        setPagination(null);
+        addToast(message, "error");
       } finally {
         setLoading(false);
       }
     }
 
     fetchOpportunities();
-  }, [chain, protocol, riskLevel, search, sort]);
+  }, [chain, protocol, riskLevel, search, sort, page, limit, minApy, maxApy]);
 
   function updateFilters(newParams: Record<string, string | undefined>) {
     const params = new URLSearchParams(searchParams);
@@ -62,6 +103,14 @@ export default function EarnPage() {
       if (value) params.set(key, value);
       else params.delete(key);
     });
+    // Reset to page 1 when filters change
+    params.set("page", "1");
+    router.push(`/earn?${params.toString()}`);
+  }
+
+  function goToPage(newPage: number) {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", newPage.toString());
     router.push(`/earn?${params.toString()}`);
   }
 
@@ -74,7 +123,7 @@ export default function EarnPage() {
             Maximize Your Yield
           </h1>
           <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-            {opportunities.length > 0 && `${opportunities.length} opportunities`} across multiple chains and protocols
+            {pagination?.total ? `${pagination.total} opportunities` : "Loading opportunities..."} across multiple chains and protocols
           </p>
 
           {/* Stats Grid */}
@@ -127,6 +176,8 @@ export default function EarnPage() {
                 riskLevel={riskLevel}
                 search={search}
                 sort={sort}
+                minApy={minApy}
+                maxApy={maxApy}
                 onFilterChange={updateFilters}
               />
             </div>
@@ -134,6 +185,42 @@ export default function EarnPage() {
               <ViewToggle view={view} onViewChange={setView} />
             </div>
           </div>
+
+          {/* Error State */}
+          {error && !loading && (
+            <div className="mt-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 text-red-500 text-xl">⚠</div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold" style={{ color: "var(--text-primary)" }}>
+                      {error.error}
+                    </h3>
+                    {error.suggestedAction && (
+                      <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+                        {error.suggestedAction}
+                      </p>
+                    )}
+                    <div className="mt-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+                      Error Code: <code>{error.errorCode}</code> • {new Date(error.timestamp).toLocaleTimeString()}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full mt-2 rounded px-3 py-2 text-sm font-medium transition-colors"
+                  style={{
+                    background: "var(--accent)",
+                    color: "var(--bg)",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Loading State */}
           {loading && (
@@ -148,16 +235,15 @@ export default function EarnPage() {
             </div>
           )}
 
-
           {/* Empty State */}
-          {!loading && opportunities.length === 0 && (
+          {!loading && !error && opportunities.length === 0 && (
             <div className="mt-6 text-center py-12">
               <p style={{ color: "var(--text-secondary)" }}>No opportunities match your filters. Try adjusting them.</p>
             </div>
           )}
 
           {/* Grid View */}
-          {!loading && opportunities.length > 0 && view === "grid" && (
+          {!loading && !error && opportunities.length > 0 && view === "grid" && (
             <div className="mt-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {opportunities.map((opp) => (
@@ -166,22 +252,85 @@ export default function EarnPage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 text-sm text-center" style={{ color: "var(--text-secondary)" }}>
-                Showing {opportunities.length} opportunity{opportunities.length !== 1 ? "ies" : ""}
-              </div>
+
+              {/* Pagination Controls */}
+              {pagination && (
+                <div className="mt-6 flex items-center justify-between rounded-lg border p-4" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
+                  <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                    Page {pagination.page} of {pagination.pages} • Showing {opportunities.length} of {pagination.total} results
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => goToPage(pagination.page - 1)}
+                      disabled={!pagination.hasPreviousPage}
+                      className="rounded px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        background: pagination.hasPreviousPage ? "var(--accent)" : "var(--border)",
+                        color: pagination.hasPreviousPage ? "var(--bg)" : "var(--text-secondary)",
+                      }}
+                    >
+                      ← Previous
+                    </button>
+                    <button
+                      onClick={() => goToPage(pagination.page + 1)}
+                      disabled={!pagination.hasNextPage}
+                      className="rounded px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        background: pagination.hasNextPage ? "var(--accent)" : "var(--border)",
+                        color: pagination.hasNextPage ? "var(--bg)" : "var(--text-secondary)",
+                      }}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* Table View */}
-          {!loading && opportunities.length > 0 && view === "table" && (
+          {!loading && !error && opportunities.length > 0 && view === "table" && (
             <div className="mt-6">
               <OpportunityTable
                 opportunities={opportunities}
                 onRowClick={(slug) => router.push(`/earn/${slug}`)}
                 page={page}
-                onPageChange={setPage}
-                pageSize={20}
+                onPageChange={goToPage}
+                pageSize={limit}
               />
+
+              {/* Pagination Controls */}
+              {pagination && (
+                <div className="mt-6 flex items-center justify-between rounded-lg border p-4" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
+                  <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                    Page {pagination.page} of {pagination.pages} • Showing {opportunities.length} of {pagination.total} results
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => goToPage(pagination.page - 1)}
+                      disabled={!pagination.hasPreviousPage}
+                      className="rounded px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        background: pagination.hasPreviousPage ? "var(--accent)" : "var(--border)",
+                        color: pagination.hasPreviousPage ? "var(--bg)" : "var(--text-secondary)",
+                      }}
+                    >
+                      ← Previous
+                    </button>
+                    <button
+                      onClick={() => goToPage(pagination.page + 1)}
+                      disabled={!pagination.hasNextPage}
+                      className="rounded px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        background: pagination.hasNextPage ? "var(--accent)" : "var(--border)",
+                        color: pagination.hasNextPage ? "var(--bg)" : "var(--text-secondary)",
+                      }}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

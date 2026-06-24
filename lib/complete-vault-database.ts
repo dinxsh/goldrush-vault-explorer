@@ -600,8 +600,8 @@ export function filterOpportunities(
     if (filters.chain && opp.chain !== filters.chain) return false;
     if (filters.protocol && opp.protocol !== filters.protocol) return false;
     if (filters.riskLevel && opp.riskLevel !== filters.riskLevel) return false;
-    if (filters.minApy && opp.apy < filters.minApy) return false;
-    if (filters.maxApy && opp.apy > filters.maxApy) return false;
+    if (filters.minApy && (!opp.apy || opp.apy < filters.minApy)) return false;
+    if (filters.maxApy && (!opp.apy || opp.apy > filters.maxApy)) return false;
 
     if (filters.search) {
       const q = filters.search.toLowerCase();

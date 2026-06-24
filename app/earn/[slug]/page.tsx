@@ -6,6 +6,18 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { ToastContainer, useToast } from "@/components/Toast";
 import { type OpportunityWithMetrics } from "@/types/opportunity";
 
+interface ApiError {
+  error: string;
+  errorCode: string;
+  timestamp: string;
+  suggestedAction?: string;
+  vault?: {
+    address: string;
+    chain: string;
+    protocol: string;
+  };
+}
+
 export default function OpportunityDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -13,18 +25,33 @@ export default function OpportunityDetailPage() {
   const { toasts, addToast, removeToast } = useToast();
 
   const [opportunity, setOpportunity] = useState<OpportunityWithMetrics | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchOpportunity() {
       try {
         setLoading(true);
+        setError(null);
         const response = await fetch(`/api/opportunities/${slug}`);
-        if (!response.ok) throw new Error("Opportunity not found");
         const data = await response.json();
+
+        if (!response.ok) {
+          setError(data);
+          addToast(data.error || "Failed to load opportunity", "error");
+          return;
+        }
+
         setOpportunity(data);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to load opportunity";
+        const apiError: ApiError = {
+          error: message,
+          errorCode: "NETWORK_ERROR",
+          timestamp: new Date().toISOString(),
+          suggestedAction: "Check your internet connection and try again.",
+        };
+        setError(apiError);
         addToast(message, "error");
       } finally {
         setLoading(false);
@@ -45,21 +72,69 @@ export default function OpportunityDetailPage() {
     );
   }
 
-  if (!loading && !opportunity) {
+  if (!loading && !opportunity && error) {
+    const isNotFound = error.errorCode === "VAULT_NOT_FOUND";
     return (
       <main className="flex min-h-screen items-center justify-center px-4 py-12" style={{ background: "var(--bg)" }}>
-        <div className="text-center max-w-sm">
-          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Not Found</h1>
+        <div className="text-center max-w-md">
+          <div className="text-4xl mb-4">{isNotFound ? "🔍" : "⚠️"}</div>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+            {isNotFound ? "Opportunity Not Found" : "Error Loading Opportunity"}
+          </h1>
           <p className="mt-2" style={{ color: "var(--text-secondary)" }}>
-            This opportunity could not be found.
+            {error.error}
           </p>
-          <button
-            onClick={() => router.push("/earn")}
-            className="mt-4 rounded px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-80"
-            style={{ background: "var(--accent)", color: "#0f0f0f" }}
-          >
-            Back to Opportunities
-          </button>
+
+          {error.suggestedAction && (
+            <div
+              className="mt-4 rounded-lg border-l-4 p-3 text-left text-sm"
+              style={{
+                borderColor: "var(--accent)",
+                background: "rgba(100, 116, 139, 0.05)",
+              }}
+            >
+              <p style={{ color: "var(--text-secondary)" }}>
+                <strong>Suggested action:</strong> {error.suggestedAction}
+              </p>
+            </div>
+          )}
+
+          {error.vault && (
+            <div
+              className="mt-4 rounded-lg border p-3 text-left text-xs"
+              style={{
+                borderColor: "var(--border)",
+                background: "var(--card)",
+              }}
+            >
+              <div style={{ color: "var(--text-secondary)" }} className="font-mono">
+                <div>Protocol: {error.vault.protocol}</div>
+                <div>Chain: {error.vault.chain}</div>
+                <div className="mt-1 break-all">Address: {error.vault.address}</div>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 text-xs" style={{ color: "var(--text-secondary)" }}>
+            Error Code: <code>{error.errorCode}</code> • {new Date(error.timestamp).toLocaleTimeString()}
+          </div>
+
+          <div className="mt-6 flex gap-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="flex-1 rounded px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-80"
+              style={{ background: "var(--border)", color: "var(--text-primary)" }}
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => router.push("/earn")}
+              className="flex-1 rounded px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-80"
+              style={{ background: "var(--accent)", color: "#0f0f0f" }}
+            >
+              Back to Opportunities
+            </button>
+          </div>
         </div>
         <ToastContainer toasts={toasts} onRemove={removeToast} />
       </main>

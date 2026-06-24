@@ -4,7 +4,8 @@ export type SupportedChain =
     | "matic-mainnet"
     | "arbitrum-mainnet"
     | "optimism-mainnet"
-    | "bsc-mainnet";
+    | "bsc-mainnet"
+    | "avalanche-mainnet";
 
 export interface VaultNode {
     address: string;

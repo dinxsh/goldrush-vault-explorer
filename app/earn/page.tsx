@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import OpportunityCard from "@/components/OpportunityCard";
 import OpportunityFilters from "@/components/OpportunityFilters";
+import ViewToggle from "@/components/ViewToggle";
+import OpportunityTable from "@/components/OpportunityTable";
 import { type Opportunity } from "@/types/opportunity";
 import { type SupportedChain } from "@/types/vault";
 
@@ -14,6 +16,8 @@ export default function EarnPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<"grid" | "table">("grid");
+  const [page, setPage] = useState(1);
 
   // Filter state from URL
   const chain = (searchParams.get("chain") as SupportedChain) || undefined;
@@ -77,15 +81,22 @@ export default function EarnPage() {
       {/* Filters & Content */}
       <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          {/* Filters */}
-          <OpportunityFilters
-            chain={chain}
-            protocol={protocol}
-            riskLevel={riskLevel}
-            search={search}
-            sort={sort}
-            onFilterChange={updateFilters}
-          />
+          {/* Filters & View Toggle */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex-1">
+              <OpportunityFilters
+                chain={chain}
+                protocol={protocol}
+                riskLevel={riskLevel}
+                search={search}
+                sort={sort}
+                onFilterChange={updateFilters}
+              />
+            </div>
+            <div className="shrink-0">
+              <ViewToggle view={view} onViewChange={setView} />
+            </div>
+          </div>
 
           {/* Loading State */}
           {loading && (
@@ -117,21 +128,32 @@ export default function EarnPage() {
             </div>
           )}
 
-          {/* Grid */}
-          {!loading && opportunities.length > 0 && (
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {opportunities.map((opp) => (
-                <div key={opp.slug} onClick={() => router.push(`/earn/${opp.slug}`)}>
-                  <OpportunityCard opportunity={opp} />
-                </div>
-              ))}
+          {/* Grid View */}
+          {!loading && opportunities.length > 0 && view === "grid" && (
+            <div className="mt-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {opportunities.map((opp) => (
+                  <div key={opp.slug} onClick={() => router.push(`/earn/${opp.slug}`)} className="cursor-pointer">
+                    <OpportunityCard opportunity={opp} />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 text-sm text-center" style={{ color: "var(--text-secondary)" }}>
+                Showing {opportunities.length} opportunity{opportunities.length !== 1 ? "ies" : ""}
+              </div>
             </div>
           )}
 
-          {/* Total count */}
-          {!loading && opportunities.length > 0 && (
-            <div className="mt-4 text-sm text-center" style={{ color: "var(--text-secondary)" }}>
-              Showing {opportunities.length} opportunity{opportunities.length !== 1 ? "ies" : ""}
+          {/* Table View */}
+          {!loading && opportunities.length > 0 && view === "table" && (
+            <div className="mt-6">
+              <OpportunityTable
+                opportunities={opportunities}
+                onRowClick={(slug) => router.push(`/earn/${slug}`)}
+                page={page}
+                onPageChange={setPage}
+                pageSize={20}
+              />
             </div>
           )}
         </div>

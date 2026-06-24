@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import InfoTooltip from "@/components/InfoTooltip";
 import { type OpportunityWithMetrics } from "@/types/opportunity";
 
 export default function OpportunityDetailPage() {
@@ -117,25 +118,34 @@ export default function OpportunityDetailPage() {
           {/* Key Metrics */}
           <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
             <div>
-              <div className="text-2xl font-bold" style={{ color: "var(--accent)" }}>
-                {opportunity.apy !== null ? `${(opportunity.apy * 100).toFixed(2)}%` : "—"}
+              <div className="flex items-baseline gap-2 mb-1">
+                <div className="text-2xl font-bold" style={{ color: "var(--accent)" }}>
+                  {opportunity.apy !== null ? `${(opportunity.apy * 100).toFixed(2)}%` : "—"}
+                </div>
+                <InfoTooltip text="Annual Percentage Yield, updated hourly" />
               </div>
               <div className="text-xs uppercase tracking-wider mt-1" style={{ color: "var(--text-secondary)" }}>
                 APY
               </div>
             </div>
             <div>
-              <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
-                ${(opportunity.tvl / 1_000_000).toFixed(1)}M
+              <div className="flex items-baseline gap-2 mb-1">
+                <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+                  ${(opportunity.tvl / 1_000_000).toFixed(1)}M
+                </div>
+                <InfoTooltip text="Total Value Locked in this opportunity" />
               </div>
               <div className="text-xs uppercase tracking-wider mt-1" style={{ color: "var(--text-secondary)" }}>
                 TVL
               </div>
             </div>
             <div>
-              <div className="text-2xl font-bold" style={{ color: opportunity.apyChange24h >= 0 ? "#22c55e" : "#ef4444" }}>
-                {opportunity.apyChange24h >= 0 ? "+" : ""}
-                {(opportunity.apyChange24h * 100).toFixed(2)}%
+              <div className="flex items-baseline gap-2 mb-1">
+                <div className="text-2xl font-bold" style={{ color: opportunity.apyChange24h >= 0 ? "#22c55e" : "#ef4444" }}>
+                  {opportunity.apyChange24h >= 0 ? "+" : ""}
+                  {(opportunity.apyChange24h * 100).toFixed(2)}%
+                </div>
+                <InfoTooltip text="Price change in last 24 hours" />
               </div>
               <div className="text-xs uppercase tracking-wider mt-1" style={{ color: "var(--text-secondary)" }}>
                 24h Change
@@ -200,11 +210,17 @@ export default function OpportunityDetailPage() {
               </h2>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span style={{ color: "var(--text-secondary)" }}>Protocol</span>
+                  <div className="flex items-center gap-1">
+                    <span style={{ color: "var(--text-secondary)" }}>Protocol</span>
+                    <InfoTooltip text="Blockchain protocol providing this opportunity" />
+                  </div>
                   <span style={{ color: "var(--text-primary)" }}>{opportunity.protocol}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span style={{ color: "var(--text-secondary)" }}>Chain</span>
+                  <div className="flex items-center gap-1">
+                    <span style={{ color: "var(--text-secondary)" }}>Chain</span>
+                    <InfoTooltip text="Blockchain network where this vault operates" />
+                  </div>
                   <span style={{ color: "var(--text-primary)" }}>{opportunity.chain}</span>
                 </div>
                 <div className="flex justify-between">
@@ -212,7 +228,10 @@ export default function OpportunityDetailPage() {
                   <span style={{ color: "var(--text-primary)" }}>—</span>
                 </div>
                 <div className="flex justify-between">
-                  <span style={{ color: "var(--text-secondary)" }}>Risk Level</span>
+                  <div className="flex items-center gap-1">
+                    <span style={{ color: "var(--text-secondary)" }}>Risk Level</span>
+                    <InfoTooltip text="Calculated from smart contract, oracle, and market risks" />
+                  </div>
                   <span style={{ color: riskTextColor, textTransform: "capitalize" }}>
                     {opportunity.riskLevel}
                   </span>

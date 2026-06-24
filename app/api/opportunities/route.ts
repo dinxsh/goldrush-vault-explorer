@@ -45,8 +45,8 @@ export async function GET(req: NextRequest) {
       sorted = [...withMetrics].sort((a, b) => (a.apy || 0) - (b.apy || 0));
     } else if (sortBy === "tvl-desc") {
       sorted = [...withMetrics].sort((a, b) => (b.tvl || 0) - (a.tvl || 0));
-    } else {
-      sorted = sortOpportunities(withMetrics, sortBy);
+    } else if (sortBy === "name") {
+      sorted = [...withMetrics].sort((a, b) => a.name.localeCompare(b.name));
     }
 
     return NextResponse.json({

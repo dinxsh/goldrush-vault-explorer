@@ -32,7 +32,7 @@ export async function GET(
     // Build response with live metrics (no fallbacks - real data only)
     const response: OpportunityWithMetrics = {
       ...opportunity,
-      apy: rootNode.apy,
+      apy: rootNode.apy ?? null,
       tvl: rootNode.balanceUSD,
       apyChange24h: apyChange24h,
       updatedAt: Date.now(),

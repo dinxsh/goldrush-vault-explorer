@@ -66,6 +66,10 @@ export default function OpportunityDetailPage() {
     );
   }
 
+  if (!opportunity) {
+    return null;
+  }
+
   const riskColor =
     opportunity.riskLevel === "low"
       ? "rgba(34, 197, 94, 0.12)"

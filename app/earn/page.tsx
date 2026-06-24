@@ -114,7 +114,7 @@ export default function EarnPage() {
 
 
           {/* Empty State */}
-          {!loading && !error && opportunities.length === 0 && (
+          {!loading && opportunities.length === 0 && (
             <div className="mt-6 text-center py-12">
               <p style={{ color: "var(--text-secondary)" }}>No opportunities match your filters. Try adjusting them.</p>
             </div>

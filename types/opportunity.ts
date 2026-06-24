@@ -10,7 +10,7 @@ export interface Opportunity {
   riskLevel: "low" | "medium" | "high";
   riskFactors: string[];
   highlights: string[];
-  apy?: number;
+  apy?: number | null;
   tvl?: number;
 }
 

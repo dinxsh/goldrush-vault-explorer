@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import InfoTooltip from "@/components/InfoTooltip";
 import { ToastContainer, useToast } from "@/components/Toast";
 import { type OpportunityWithMetrics } from "@/types/opportunity";
+import { getProtocolDeployUrl } from "@/lib/protocol-urls";
 
 interface ApiError {
   error: string;
@@ -341,11 +342,15 @@ export default function OpportunityDetailPage() {
             View in Vault Explorer
           </button>
           <button
-            onClick={() => window.open(`https://app.morpho.org/`, "_blank")}
+            onClick={() => {
+              const url = getProtocolDeployUrl(opportunity.protocol, opportunity.asset);
+              window.open(url, "_blank");
+            }}
             className="flex-1 rounded px-4 py-3 text-sm font-semibold transition-opacity hover:opacity-80"
             style={{ background: "var(--accent)", color: "#0f0f0f" }}
+            title={`Deploy on ${opportunity.protocol}`}
           >
-            Deploy Now →
+            Deploy on {opportunity.protocol} →
           </button>
         </div>
       </div>

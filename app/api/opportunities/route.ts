@@ -1,6 +1,7 @@
 import { getAllOpportunities, filterOpportunities, sortOpportunities, getStatistics } from "@/lib/complete-vault-database";
 import { type NextRequest, NextResponse } from "next/server";
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 60; // Cache for 60 seconds
 
 export async function GET(req: NextRequest) {

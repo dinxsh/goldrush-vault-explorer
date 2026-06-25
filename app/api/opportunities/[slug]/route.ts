@@ -4,6 +4,7 @@ import { type OpportunityWithMetrics } from "@/types/opportunity";
 import { type SupportedChain } from "@/types/vault";
 import { type NextRequest, NextResponse } from "next/server";
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 60; // Cache for 60 seconds
 
 const VAULT_FETCH_TIMEOUT = 8000; // 8 seconds

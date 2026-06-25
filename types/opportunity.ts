@@ -42,4 +42,5 @@ export interface OpportunityWithMetrics extends Opportunity {
   tvl: number;
   apyChange24h: number;
   updatedAt: number;
+  dataSource?: "live" | "static"; // Indicates if data came from blockchain or database
 }

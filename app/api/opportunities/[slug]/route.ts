@@ -45,9 +45,9 @@ export async function GET(
       );
     }
 
-    // Fetch live vault data with timeout (no fallback on error)
-    let vaultData: any;
-    let vaultDataError: string | null = null;
+    // Fetch live vault data with timeout
+    let vaultData: any = null;
+    let liveDataAvailable = false;
 
     try {
       vaultData = await Promise.race([
@@ -56,40 +56,53 @@ export async function GET(
           setTimeout(() => reject(new Error(`Vault data fetch timeout after ${VAULT_FETCH_TIMEOUT}ms`)), VAULT_FETCH_TIMEOUT)
         ),
       ]);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Unknown error fetching vault data";
-      vaultDataError = errorMsg;
 
-      // Return error instead of fallback
-      return NextResponse.json(
-        {
-          error: `Failed to fetch live vault data: ${errorMsg}`,
-          errorCode: "VAULT_DATA_FETCH_FAILED",
-          slug,
-          vault: {
-            address: opportunity.vaultAddress,
-            chain: opportunity.chain,
-            protocol: opportunity.protocol,
-          },
-          timestamp,
-          suggestedAction: "This error indicates the blockchain data source is unreachable or timeout. Try again in a moment.",
-        },
-        { status: 503 } // Service Unavailable
-      );
+      // Validate vault data
+      if (vaultData && Array.isArray(vaultData) && vaultData.length > 0) {
+        liveDataAvailable = true;
+      }
+    } catch (err) {
+      // Live data fetch failed - will use static data as fallback
+      liveDataAvailable = false;
     }
 
-    // Validate vault data
-    if (!vaultData || !Array.isArray(vaultData) || vaultData.length === 0) {
-      return NextResponse.json(
-        {
-          error: "Vault data fetch returned empty or invalid response",
-          errorCode: "INVALID_VAULT_DATA",
-          slug,
-          timestamp,
-          suggestedAction: "The blockchain data source returned an invalid response. Try again in a moment.",
+    // If no live data, use static data from database
+    if (!liveDataAvailable) {
+      // Use static APY and TVL as fallback
+      if (opportunity.apy === undefined) {
+        return NextResponse.json(
+          {
+            error: "APY data unavailable from both live source and static data",
+            errorCode: "APY_DATA_MISSING",
+            slug,
+            timestamp,
+            vault: {
+              name: opportunity.name,
+              protocol: opportunity.protocol,
+              chain: opportunity.chain,
+            },
+            suggestedAction: "Static vault data is not available. Please try again in a few moments.",
+          },
+          { status: 503 }
+        );
+      }
+
+      // Return opportunity with static data
+      const response: OpportunityWithMetrics = {
+        ...opportunity,
+        apy: opportunity.apy ?? null,
+        tvl: opportunity.tvl ?? 0,
+        apyChange24h: 0, // No live data available
+        updatedAt: Date.now(),
+        dataSource: "static", // Indicate this is static data
+      };
+
+      return NextResponse.json(response, {
+        headers: {
+          "cache-control": "public, max-age=60",
+          "X-Data-Source": "static",
         },
-        { status: 503 }
-      );
+      });
     }
 
     const rootNode = vaultData[0];
@@ -137,10 +150,14 @@ export async function GET(
       tvl: rootNode.balanceUSD,
       apyChange24h: apyChange24h,
       updatedAt: Date.now(),
+      dataSource: "live", // Indicate this is live blockchain data
     };
 
     return NextResponse.json(response, {
-      headers: { "cache-control": "public, max-age=60" },
+      headers: {
+        "cache-control": "public, max-age=60",
+        "X-Data-Source": "live",
+      },
     });
   } catch (error) {
     console.error(`[API ERROR] /api/opportunities/${slug}:`, error);

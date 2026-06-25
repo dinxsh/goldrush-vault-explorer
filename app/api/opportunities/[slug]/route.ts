@@ -45,9 +45,8 @@ export async function GET(
       );
     }
 
-    // Fetch live vault data with timeout
-    let vaultData: any = null;
-    let liveDataAvailable = false;
+    // Fetch LIVE vault data with timeout - NO FALLBACK
+    let vaultData: any;
 
     try {
       vaultData = await Promise.race([
@@ -56,62 +55,43 @@ export async function GET(
           setTimeout(() => reject(new Error(`Vault data fetch timeout after ${VAULT_FETCH_TIMEOUT}ms`)), VAULT_FETCH_TIMEOUT)
         ),
       ]);
-
-      // Validate vault data
-      if (vaultData && Array.isArray(vaultData) && vaultData.length > 0) {
-        liveDataAvailable = true;
-      }
     } catch (err) {
-      // Live data fetch failed - will use static data as fallback
-      liveDataAvailable = false;
+      const errorMsg = err instanceof Error ? err.message : "Unknown error fetching vault data";
+
+      // STRICT: No fallback - return error
+      return NextResponse.json(
+        {
+          error: `Failed to fetch live vault data: ${errorMsg}`,
+          errorCode: "VAULT_DATA_FETCH_FAILED",
+          slug,
+          vault: {
+            address: opportunity.vaultAddress,
+            chain: opportunity.chain,
+            protocol: opportunity.protocol,
+          },
+          timestamp,
+          suggestedAction: "This vault's live blockchain data is currently unavailable. The blockchain data source is unreachable or the contract may not be compatible. Please try again in a moment.",
+        },
+        { status: 503 }
+      );
     }
 
-    // If no live data, use static data from database
-    if (!liveDataAvailable) {
-      // Use static APY and TVL as fallback
-      if (opportunity.apy === undefined) {
-        return NextResponse.json(
-          {
-            error: "APY data unavailable from both live source and static data",
-            errorCode: "APY_DATA_MISSING",
-            slug,
-            timestamp,
-            vault: {
-              name: opportunity.name,
-              protocol: opportunity.protocol,
-              chain: opportunity.chain,
-            },
-            suggestedAction: "Static vault data is not available. Please try again in a few moments.",
+    // Validate that we have valid live data
+    if (!vaultData || !Array.isArray(vaultData) || vaultData.length === 0) {
+      return NextResponse.json(
+        {
+          error: "Vault returned no data from blockchain",
+          errorCode: "INVALID_VAULT_DATA",
+          slug,
+          timestamp,
+          vault: {
+            address: opportunity.vaultAddress,
+            protocol: opportunity.protocol,
           },
-          { status: 503 }
-        );
-      }
-
-      // Return opportunity with static data
-      // Calculate deterministic APY change based on slug (consistent per vault)
-      // This creates a pseudo-random but reproducible value
-      let hashValue = 0;
-      for (let i = 0; i < slug.length; i++) {
-        hashValue = ((hashValue << 5) - hashValue) + slug.charCodeAt(i);
-        hashValue = hashValue & hashValue; // Convert to 32bit integer
-      }
-      const apyChangePercent = ((hashValue % 400) - 200) / 10000; // ±2%
-
-      const response: OpportunityWithMetrics = {
-        ...opportunity,
-        apy: opportunity.apy ?? null,
-        tvl: opportunity.tvl ?? 0,
-        apyChange24h: apyChangePercent,
-        updatedAt: Date.now(),
-        dataSource: "static", // Indicate this is static data
-      };
-
-      return NextResponse.json(response, {
-        headers: {
-          "cache-control": "public, max-age=60",
-          "X-Data-Source": "static",
+          suggestedAction: "This vault contract did not return expected data. It may not implement the required interface. Contact the protocol team for support.",
         },
-      });
+        { status: 503 }
+      );
     }
 
     const rootNode = vaultData[0];
@@ -153,19 +133,40 @@ export async function GET(
       );
     }
 
+    // STRICT: Only return live blockchain data, never fallback
     const response: OpportunityWithMetrics = {
       ...opportunity,
-      apy: rootNode.apy ?? opportunity.apy ?? null,
+      apy: rootNode.apy ?? null, // Only use live APY, never fallback
       tvl: rootNode.balanceUSD,
       apyChange24h: apyChange24h,
       updatedAt: Date.now(),
-      dataSource: "live", // Indicate this is live blockchain data
+      dataSource: "live", // Always live - no fallback
     };
+
+    // Verify we have APY data from live source
+    if (response.apy === null || response.apy === undefined) {
+      return NextResponse.json(
+        {
+          error: "APY data unavailable from live blockchain source",
+          errorCode: "APY_DATA_MISSING",
+          slug,
+          timestamp,
+          vault: {
+            name: opportunity.name,
+            protocol: opportunity.protocol,
+            chain: opportunity.chain,
+          },
+          suggestedAction: "Live APY data is not available for this vault. The contract may not expose APY information. Contact the protocol team.",
+        },
+        { status: 503 }
+      );
+    }
 
     return NextResponse.json(response, {
       headers: {
         "cache-control": "public, max-age=60",
         "X-Data-Source": "live",
+        "X-Vault-Data": "blockchain-live",
       },
     });
   } catch (error) {

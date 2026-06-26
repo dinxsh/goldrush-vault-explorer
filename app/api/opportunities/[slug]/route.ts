@@ -86,6 +86,7 @@ export async function GET(
           timestamp,
           vault: {
             address: opportunity.vaultAddress,
+            chain: opportunity.chain,
             protocol: opportunity.protocol,
           },
           suggestedAction: "This vault contract did not return expected data. It may not implement the required interface. Contact the protocol team for support.",

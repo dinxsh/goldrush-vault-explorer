@@ -39,7 +39,21 @@ export async function GET(
     // Resolve from curated DB first; fall back to the live auto-discovered
     // universe (slug self-describes address + chain) so every listed vault has
     // a working detail page.
-    const opportunity = getOpportunityBySlug(slug) ?? (await findAggregatedBySlug(slug));
+    const curated = getOpportunityBySlug(slug);
+    const opportunity = curated ?? (await findAggregatedBySlug(slug));
+    // Auto-discovered vaults carry live APY/TVL from their protocol's API. The
+    // on-chain decomposition only works for ERC-4626 / Morpho / Euler / Comet
+    // shapes — many Yearn (v2, LP-wrapping) vaults aren't decomposable. For those
+    // we fall back to the protocol's live metrics instead of hard-erroring.
+    const isAggregated = !curated && !!opportunity;
+    const protocolMetricsResponse = (): OpportunityWithMetrics => ({
+      ...(opportunity as OpportunityWithMetrics),
+      apy: opportunity!.apy ?? null,
+      tvl: opportunity!.tvl ?? 0,
+      apyChange24h: 0,
+      updatedAt: Date.now(),
+      dataSource: "live",
+    });
     if (!opportunity) {
       return NextResponse.json(
         {
@@ -66,6 +80,13 @@ export async function GET(
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Unknown error fetching vault data";
 
+      // Auto-discovered vault: fall back to its live protocol-API metrics.
+      if (isAggregated && opportunity.apy != null) {
+        return NextResponse.json(protocolMetricsResponse(), {
+          headers: { "cache-control": "public, max-age=300", "X-Data-Source": "live", "X-Vault-Data": "protocol-api" },
+        });
+      }
+
       // STRICT: No fallback - return error
       return NextResponse.json(
         {
@@ -86,6 +107,11 @@ export async function GET(
 
     // Validate that we have valid live data
     if (!vaultData || !Array.isArray(vaultData) || vaultData.length === 0) {
+      if (isAggregated && opportunity.apy != null) {
+        return NextResponse.json(protocolMetricsResponse(), {
+          headers: { "cache-control": "public, max-age=300", "X-Data-Source": "live", "X-Vault-Data": "protocol-api" },
+        });
+      }
       return NextResponse.json(
         {
           error: "Vault returned no data from blockchain",
@@ -105,6 +131,11 @@ export async function GET(
 
     const rootNode = vaultData[0];
     if (!rootNode || !rootNode.balanceUSD) {
+      if (isAggregated && opportunity.apy != null) {
+        return NextResponse.json(protocolMetricsResponse(), {
+          headers: { "cache-control": "public, max-age=300", "X-Data-Source": "live", "X-Vault-Data": "protocol-api" },
+        });
+      }
       return NextResponse.json(
         {
           error: "Vault data incomplete — missing balanceUSD",
@@ -145,7 +176,9 @@ export async function GET(
     // STRICT: Only return live blockchain data, never fallback
     const response: OpportunityWithMetrics = {
       ...opportunity,
-      apy: rootNode.apy ?? null, // Only use live APY, never fallback
+      // Prefer on-chain APY; for auto-discovered vaults fall back to the live
+      // protocol-API APY when the decomposition doesn't expose one.
+      apy: rootNode.apy ?? (isAggregated ? opportunity.apy ?? null : null),
       tvl: rootNode.balanceUSD,
       apyChange24h: apyChange24h,
       updatedAt: Date.now(),

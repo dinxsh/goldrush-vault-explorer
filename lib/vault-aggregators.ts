@@ -41,6 +41,11 @@ const CHAIN_BY_KEY: Record<string, SupportedChain> = Object.fromEntries(
 const MORPHO_CHAIN_IDS = [1, 10, 137, 8453, 42161];
 const YEARN_CHAIN_IDS = [1, 10, 137, 8453, 42161];
 
+// SupportedChain → numeric id (inverse of CHAIN_BY_ID), for the Morpho API.
+const CHAIN_ID_BY_CHAIN: Partial<Record<SupportedChain, number>> = Object.fromEntries(
+  Object.entries(CHAIN_BY_ID).map(([id, chain]) => [chain, Number(id)])
+) as Partial<Record<SupportedChain, number>>;
+
 // Only surface vaults with at least this much TVL — filters out the long tail of
 // dust / test / spam vaults the APIs also return.
 const MIN_TVL_USD = 100_000;
@@ -267,14 +272,145 @@ export async function findAggregatedBySlug(slug: string): Promise<Opportunity | 
   const hit = all.find((v) => v.slug === slug);
   if (hit) return hit;
 
+  // Cache miss (e.g. the vault dropped below the list's TVL floor, or the cache
+  // refreshed). Fetch this single vault's live metrics directly so the detail
+  // page shows real APY/TVL rather than zeros.
+  const single =
+    parsed.protocol === "yearn"
+      ? await fetchSingleYearnVault(parsed.address, parsed.chain)
+      : await fetchSingleMorphoVault(parsed.address, parsed.chain);
+  if (single) return single;
+
+  // Truly unresolvable — apy null signals "no live data" so the detail route
+  // surfaces an honest error rather than a fake 0%.
   const protocolName = parsed.protocol.charAt(0).toUpperCase() + parsed.protocol.slice(1);
-  return toOpportunity({
-    protocol: (protocolName === "Yearn" ? "Yearn" : "Morpho") as "Morpho" | "Yearn",
-    address: parsed.address,
-    chain: parsed.chain,
-    name: `${protocolName} Vault`,
-    asset: "—",
-    apy: 0,
-    tvl: 0,
-  });
+  return {
+    ...toOpportunity({
+      protocol: (protocolName === "Yearn" ? "Yearn" : "Morpho") as "Morpho" | "Yearn",
+      address: parsed.address,
+      chain: parsed.chain,
+      name: `${protocolName} Vault`,
+      asset: "—",
+      apy: 0,
+      tvl: 0,
+    }),
+    apy: null,
+  };
+}
+
+// Single-vault live lookups, used when a detail page is hit for a vault not in
+// the current aggregated cache.
+async function fetchSingleMorphoVault(address: string, chain: SupportedChain): Promise<Opportunity | null> {
+  const chainId = CHAIN_ID_BY_CHAIN[chain];
+  if (!chainId) return null;
+  const query = `{ vaultByAddress(address: "${address.toLowerCase()}", chainId: ${chainId}) { name asset { symbol } state { netApy totalAssetsUsd } } }`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const resp = await fetch("https://blue-api.morpho.org/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+      signal: controller.signal,
+    });
+    const json = (await resp.json()) as {
+      data?: { vaultByAddress?: { name?: string; asset?: { symbol?: string }; state?: { netApy?: number | null; totalAssetsUsd?: number | null } } };
+    };
+    const v = json.data?.vaultByAddress;
+    if (!v?.state || v.state.netApy == null || v.state.totalAssetsUsd == null) return null;
+    return toOpportunity({
+      protocol: "Morpho",
+      address,
+      chain,
+      name: v.name || "Morpho Vault",
+      asset: v.asset?.symbol ?? "—",
+      apy: v.state.netApy,
+      tvl: v.state.totalAssetsUsd,
+    });
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchSingleYearnVault(address: string, chain: SupportedChain): Promise<Opportunity | null> {
+  const chainId = CHAIN_ID_BY_CHAIN[chain];
+  if (!chainId) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const resp = await fetch(`https://ydaemon.yearn.fi/${chainId}/vaults/${address.toLowerCase()}`, { signal: controller.signal });
+    if (!resp.ok) return null;
+    const v = (await resp.json()) as YearnVaultItem;
+    const tvl = v?.tvl?.tvl ?? null;
+    const apy = v?.apr?.netAPR ?? v?.apr?.forwardAPR?.netAPR ?? null;
+    if (tvl == null || apy == null) return null;
+    return toOpportunity({
+      protocol: "Yearn",
+      address,
+      chain,
+      name: v.name || "Yearn Vault",
+      asset: v.token?.symbol ?? "—",
+      apy,
+      tvl,
+    });
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ─── Morpho historical share-price series (for charts) ────────────────────────
+
+interface MorphoSeriesPoint {
+  date: string; // YYYY-MM-DD
+  price: number; // USD value of one share
+}
+
+// Daily USD share-price history for a Morpho vault, straight from the Morpho API.
+// This is real observed data — it lets the charts and trailing-window APY work
+// for Morpho vaults even when GoldRush has no pricing for the share token.
+// Returns [] for non-Morpho addresses (the API returns null), so callers can
+// fall back to GoldRush pricing.
+export async function getMorphoSharePriceSeries(
+  chain: SupportedChain,
+  address: string,
+  days = 90
+): Promise<MorphoSeriesPoint[]> {
+  const chainId = CHAIN_ID_BY_CHAIN[chain];
+  if (!chainId || !/^0x[0-9a-fA-F]{40}$/.test(address)) return [];
+
+  const startTimestamp = Math.floor(Date.now() / 1000) - days * 86400;
+  const query = `{
+    vaultByAddress(address: "${address.toLowerCase()}", chainId: ${chainId}) {
+      historicalState {
+        sharePriceUsd(options: { interval: DAY, startTimestamp: ${startTimestamp} }) { x y }
+      }
+    }
+  }`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const resp = await fetch("https://blue-api.morpho.org/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+      signal: controller.signal,
+    });
+    const json = (await resp.json()) as {
+      data?: { vaultByAddress?: { historicalState?: { sharePriceUsd?: { x: number; y: number }[] } } };
+    };
+    const points = json.data?.vaultByAddress?.historicalState?.sharePriceUsd ?? [];
+    return points
+      .filter((p) => p && p.y > 0 && Number.isFinite(p.x))
+      .map((p) => ({ date: new Date(p.x * 1000).toISOString().slice(0, 10), price: p.y }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
 }

@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getPriceSeries } from "@/lib/goldrush";
+import { getMorphoSharePriceSeries } from "@/lib/vault-aggregators";
 import { apySeriesByWindow, currentApyByWindow, APY_WINDOWS } from "@/lib/apy-windows";
+import { type SupportedChain } from "@/types/vault";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +28,14 @@ export async function GET(req: NextRequest) {
   const days = Math.min(Math.max(parseInt(daysStr, 10) || 90, 1), 365);
 
   try {
-    const series = await getPriceSeries(chain, address, days);
+    // Prefer Morpho's own daily share-price history (covers Morpho vaults whose
+    // share token GoldRush doesn't price); fall back to GoldRush pricing.
+    let series = await getMorphoSharePriceSeries(chain as SupportedChain, address, days);
+    let source: "morpho" | "goldrush" = "morpho";
+    if (series.length < 2) {
+      series = await getPriceSeries(chain, address, days);
+      source = "goldrush";
+    }
 
     return NextResponse.json(
       {
@@ -34,6 +43,7 @@ export async function GET(req: NextRequest) {
         chain,
         days,
         series,
+        source,
         count: series.length,
         hasData: series.length >= 2,
         windows: APY_WINDOWS,

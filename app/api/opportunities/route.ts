@@ -1,5 +1,31 @@
 import { getAllOpportunities, filterOpportunities, sortOpportunities, getStatistics } from "@/lib/complete-vault-database";
+import { getAggregatedVaults } from "@/lib/vault-aggregators";
+import { type Opportunity } from "@/types/opportunity";
 import { type NextRequest, NextResponse } from "next/server";
+
+// Curated vaults (rich, hand-reviewed) + the full auto-discovered universe
+// (Morpho, Yearn, …). Curated wins on address collisions so its richer metadata
+// is preserved. Aggregation failures degrade gracefully to curated-only.
+async function getMergedUniverse(): Promise<{ vaults: Opportunity[]; liveCount: number }> {
+  const curated = getAllOpportunities();
+  let aggregated: Opportunity[] = [];
+  try {
+    aggregated = await getAggregatedVaults();
+  } catch {
+    aggregated = [];
+  }
+
+  const seen = new Set(curated.map((c) => `${c.chain}:${c.vaultAddress.toLowerCase()}`));
+  const merged = [...curated];
+  for (const v of aggregated) {
+    const key = `${v.chain}:${v.vaultAddress.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(v);
+  }
+  // liveCount = aggregated vaults actually added (after de-duping against curated).
+  return { vaults: merged, liveCount: merged.length - curated.length };
+}
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 60; // Cache for 60 seconds
@@ -65,18 +91,21 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get all opportunities
-    let opportunities = getAllOpportunities();
+    // Full universe = curated + live auto-discovered vaults (Morpho, Yearn, …).
+    const { vaults: universe, liveCount } = await getMergedUniverse();
 
-    // Apply filters
-    opportunities = filterOpportunities({
-      chain,
-      protocol,
-      riskLevel,
-      search,
-      minApy,
-      maxApy,
-    });
+    // Apply filters over the merged universe.
+    let opportunities = filterOpportunities(
+      {
+        chain,
+        protocol,
+        riskLevel,
+        search,
+        minApy,
+        maxApy,
+      },
+      universe
+    );
 
     // Sort opportunities
     opportunities = sortOpportunities(opportunities, sortBy);
@@ -121,6 +150,9 @@ export async function GET(req: NextRequest) {
         metadata: {
           timestamp: new Date().toISOString(),
           vaultCount: total,
+          universeCount: universe.length,
+          liveCount,
+          curatedCount: universe.length - liveCount,
         },
       },
       { headers: { "cache-control": "public, max-age=60" } }

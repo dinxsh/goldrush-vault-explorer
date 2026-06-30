@@ -1,4 +1,5 @@
 import { getOpportunityBySlug } from "@/lib/complete-vault-database";
+import { findAggregatedBySlug } from "@/lib/vault-aggregators";
 import { recursiveDecompose } from "@/lib/vault";
 import { type OpportunityWithMetrics } from "@/types/opportunity";
 import { type SupportedChain } from "@/types/vault";
@@ -35,8 +36,10 @@ export async function GET(
       );
     }
 
-    // Get opportunity from database
-    const opportunity = getOpportunityBySlug(slug);
+    // Resolve from curated DB first; fall back to the live auto-discovered
+    // universe (slug self-describes address + chain) so every listed vault has
+    // a working detail page.
+    const opportunity = getOpportunityBySlug(slug) ?? (await findAggregatedBySlug(slug));
     if (!opportunity) {
       return NextResponse.json(
         {

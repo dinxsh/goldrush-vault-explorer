@@ -33,6 +33,7 @@ export default function EarnPage() {
 
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [pagination, setPagination] = useState<PaginationData | null>(null);
+  const [meta, setMeta] = useState<{ liveCount?: number; curatedCount?: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
   const [view, setView] = useState<"grid" | "table">("grid");
@@ -78,6 +79,7 @@ export default function EarnPage() {
 
         setOpportunities(data.opportunities || []);
         setPagination(data.pagination || null);
+        setMeta(data.metadata || null);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to load opportunities";
         setError({
@@ -174,8 +176,14 @@ export default function EarnPage() {
 
           {/* Result count + View Toggle */}
           <div className="mt-4 flex items-center justify-between">
-            <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
-              {pagination?.total != null ? `${pagination.total.toLocaleString()} vaults` : ""}
+            <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+              {pagination?.total != null && <span>{pagination.total.toLocaleString()} vaults</span>}
+              {meta?.liveCount != null && meta.liveCount > 0 && (
+                <span className="flex items-center gap-1.5 rounded-full px-2 py-0.5" style={{ background: "var(--gr-green-dim)", color: "var(--gr-green)" }}>
+                  <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--gr-green)" }} />
+                  {meta.liveCount.toLocaleString()} live · {meta.curatedCount ?? 0} curated
+                </span>
+              )}
             </div>
             <ViewToggle view={view} onViewChange={setView} />
           </div>

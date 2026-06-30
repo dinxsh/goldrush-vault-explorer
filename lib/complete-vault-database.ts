@@ -132,9 +132,10 @@ export function filterOpportunities(
     search?: string;
     minApy?: number;
     maxApy?: number;
-  }
+  },
+  base: Opportunity[] = Object.values(COMPLETE_VAULT_DATABASE)
 ): Opportunity[] {
-  return Object.values(COMPLETE_VAULT_DATABASE).filter((opp) => {
+  return base.filter((opp) => {
     if (filters.chain && opp.chain !== filters.chain) return false;
     if (filters.protocol && opp.protocol !== filters.protocol) return false;
     if (filters.riskLevel && opp.riskLevel !== filters.riskLevel) return false;

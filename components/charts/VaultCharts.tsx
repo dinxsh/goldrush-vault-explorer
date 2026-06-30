@@ -117,22 +117,10 @@ export default function VaultCharts({
     );
   }
 
+  // No live history → render nothing at all (no empty-state panel). We never
+  // show a chart surface without real data behind it.
   if (failed || !data?.hasData) {
-    return (
-      <Panel title="Performance" subtitle="Historical analytics">
-        <div className="flex flex-col items-center justify-center py-10 text-center">
-          <div className="mb-2 text-2xl">📉</div>
-          <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-            No live price history for this vault.
-          </p>
-          <p className="mt-1 max-w-md text-xs" style={{ color: "var(--text-secondary)" }}>
-            GoldRush has no historical USD pricing for this vault&apos;s share token, so charts and trailing-window APY
-            can&apos;t be derived. We never substitute synthetic data — this surface stays empty until live history is
-            available.
-          </p>
-        </div>
-      </Panel>
-    );
+    return null;
   }
 
   const anyApy = APY_WINDOWS.some((w) => (data.apyByWindow[w.key] ?? []).length > 0);

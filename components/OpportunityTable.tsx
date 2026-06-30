@@ -1,211 +1,270 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { type Opportunity } from "@/types/opportunity";
+import { type SupportedChain } from "@/types/vault";
+import { explorerAddressUrl } from "@/lib/explorer";
+import ChainIcon from "@/components/ChainIcon";
 import InfoTooltip from "./InfoTooltip";
 
 interface OpportunityTableProps {
   opportunities: Opportunity[];
   onRowClick: (slug: string) => void;
-  page: number;
-  onPageChange: (page: number) => void;
+  page?: number;
+  onPageChange?: (page: number) => void;
   pageSize?: number;
 }
 
-type SortKey = "chain" | "name" | "apy" | "tvl";
+type SortKey = "apy" | "tvl" | "liquidity" | "liquidPct";
 type SortDir = "asc" | "desc";
 
-export default function OpportunityTable({
-  opportunities,
-  onRowClick,
-  page,
-  onPageChange,
-  pageSize = 20,
-}: OpportunityTableProps) {
+interface LiquidityInfo {
+  liquidityUSD: number;
+  liquidPct: number;
+}
+// Per-vault liquidity: undefined = not fetched, null = no live data, object = loaded.
+type LiquidityState = Record<string, LiquidityInfo | null | undefined>;
+
+const GREEN = "var(--gr-green)";
+const LIQUID_PCT_GOOD = 0.05; // ≥5% instantly-withdrawable reads as healthy (green)
+
+function fmtUsd(v: number): string {
+  if (v < 1000) return `$${Math.round(v)}`;
+  if (v < 1_000_000) return `$${Math.round(v / 1000)}k`;
+  if (v < 1_000_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  return `$${(v / 1_000_000_000).toFixed(1)}B`;
+}
+
+function shortAddr(a: string): string {
+  return `${a.slice(0, 6)}…${a.slice(-4)}`;
+}
+
+// Fetch liquidity for many vaults with a small concurrency cap so a 20-row page
+// doesn't fan out 20 simultaneous live decompositions.
+async function fetchLiquidityPool(
+  rows: { slug: string; address: string; chain: string }[],
+  onResult: (slug: string, info: LiquidityInfo | null) => void,
+  concurrency = 5
+) {
+  let i = 0;
+  async function worker() {
+    while (i < rows.length) {
+      const row = rows[i++];
+      try {
+        const r = await fetch(`/api/vault-liquidity?address=${row.address}&chain=${row.chain}`);
+        const d = await r.json();
+        onResult(row.slug, d?.hasData ? { liquidityUSD: d.liquidityUSD, liquidPct: d.liquidPct } : null);
+      } catch {
+        onResult(row.slug, null);
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, rows.length) }, worker));
+}
+
+export default function OpportunityTable({ opportunities, onRowClick }: OpportunityTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>("apy");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [liquidity, setLiquidity] = useState<LiquidityState>({});
 
-  // Sort opportunities
-  const sorted = [...opportunities].sort((a, b) => {
-    let aVal: string | number = "";
-    let bVal: string | number = "";
+  // Lazily enrich the visible rows with live liquidity.
+  useEffect(() => {
+    let cancelled = false;
+    const rows = opportunities.map((o) => ({ slug: o.slug, address: o.vaultAddress, chain: o.chain }));
+    setLiquidity((prev) => {
+      const next = { ...prev };
+      for (const r of rows) if (!(r.slug in next)) next[r.slug] = undefined; // mark loading
+      return next;
+    });
+    fetchLiquidityPool(rows, (slug, info) => {
+      if (!cancelled) setLiquidity((prev) => ({ ...prev, [slug]: info }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [opportunities]);
 
-    switch (sortKey) {
-      case "chain":
-        aVal = a.chain;
-        bVal = b.chain;
-        break;
-      case "name":
-        aVal = a.name;
-        bVal = b.name;
-        break;
-      case "apy":
-        aVal = 0; // Placeholder, would need live data
-        bVal = 0;
-        break;
-      case "tvl":
-        aVal = 0; // Placeholder
-        bVal = 0;
-        break;
-    }
-
-    if (typeof aVal === "string") {
-      aVal = aVal.toLowerCase();
-      bVal = (bVal as string).toLowerCase();
-      return sortDir === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-    }
-
-    return sortDir === "asc" ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
-  });
-
-  // Paginate
-  const totalPages = Math.ceil(sorted.length / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const paginated = sorted.slice(start, end);
+  const sorted = useMemo(() => {
+    const val = (o: Opportunity): number => {
+      switch (sortKey) {
+        case "apy":
+          return o.apy ?? -Infinity;
+        case "tvl":
+          return o.tvl ?? -Infinity;
+        case "liquidity":
+          return liquidity[o.slug]?.liquidityUSD ?? -Infinity;
+        case "liquidPct":
+          return liquidity[o.slug]?.liquidPct ?? -Infinity;
+      }
+    };
+    return [...opportunities].sort((a, b) => (sortDir === "asc" ? val(a) - val(b) : val(b) - val(a)));
+  }, [opportunities, sortKey, sortDir, liquidity]);
 
   function handleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
-    } else {
+    if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else {
       setSortKey(key);
       setSortDir("desc");
     }
   }
 
-  function SortIcon({ column }: { column: SortKey }) {
-    if (sortKey !== column) return <span style={{ color: "var(--border)" }}>↕</span>;
-    return <span style={{ color: "var(--accent)" }}>{sortDir === "asc" ? "↑" : "↓"}</span>;
+  function Arrow({ column }: { column: SortKey }) {
+    if (sortKey !== column) return <span style={{ color: "var(--border)" }}>⇅</span>;
+    return <span style={{ color: GREEN }}>{sortDir === "asc" ? "↑" : "↓"}</span>;
+  }
+
+  function HeaderCell({
+    column,
+    label,
+    info,
+    align = "right",
+  }: {
+    column: SortKey;
+    label: string;
+    info?: string;
+    align?: "left" | "right";
+  }) {
+    return (
+      <th className="px-4 py-3 font-semibold" style={{ color: "var(--text-secondary)" }}>
+        {/* Clickable div (not a button) so the InfoTooltip button isn't nested
+            inside another button — nested buttons are invalid HTML / hydration errors. */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => handleSort(column)}
+          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleSort(column)}
+          className="flex cursor-pointer select-none items-center gap-1.5 text-xs uppercase tracking-wider transition-colors hover:text-[var(--gr-green)]"
+          style={{ justifyContent: align === "right" ? "flex-end" : "flex-start" }}
+        >
+          {label}
+          {info && (
+            <span onClick={(e) => e.stopPropagation()}>
+              <InfoTooltip text={info} />
+            </span>
+          )}
+          <Arrow column={column} />
+        </div>
+      </th>
+    );
   }
 
   return (
-    <div>
-      {/* Table */}
-      <div className="overflow-x-auto border rounded" style={{ borderColor: "var(--border)" }}>
-        <table className="w-full text-sm">
-          <thead style={{ background: "var(--card)", borderBottom: `1px solid var(--border)` }}>
-            <tr>
-              <th className="px-4 py-3 text-left font-semibold" style={{ color: "var(--text-secondary)" }}>
-                <button
-                  onClick={() => handleSort("chain")}
-                  className="flex items-center gap-1 hover:text-[var(--accent)]"
-                >
-                  CHAIN <SortIcon column="chain" />
-                </button>
-              </th>
-              <th className="px-4 py-3 text-left font-semibold" style={{ color: "var(--text-secondary)" }}>
-                <button
-                  onClick={() => handleSort("name")}
-                  className="flex items-center gap-1 hover:text-[var(--accent)]"
-                >
-                  VAULT <SortIcon column="name" />
-                </button>
-              </th>
-              <th className="px-4 py-3 text-left font-semibold" style={{ color: "var(--text-secondary)" }}>
-                <button
-                  onClick={() => handleSort("apy")}
-                  className="flex items-center gap-1 hover:text-[var(--accent)]"
-                >
-                  APY <InfoTooltip text="Annual Percentage Yield, updated hourly" /> <SortIcon column="apy" />
-                </button>
-              </th>
-              <th className="px-4 py-3 text-left font-semibold" style={{ color: "var(--text-secondary)" }}>
-                <button
-                  onClick={() => handleSort("tvl")}
-                  className="flex items-center gap-1 hover:text-[var(--accent)]"
-                >
-                  TVL <InfoTooltip text="Total Value Locked in this opportunity" /> <SortIcon column="tvl" />
-                </button>
-              </th>
-              <th className="px-4 py-3 text-left font-semibold" style={{ color: "var(--text-secondary)" }}>
-                30D
-              </th>
-              <th className="px-4 py-3 text-right font-semibold" style={{ color: "var(--text-secondary)" }}>
-                ACTION
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginated.map((opp, idx) => (
+    <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
+      <table className="w-full text-sm">
+        <thead style={{ background: "var(--card)" }}>
+          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
+              Chain
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
+              Vault
+            </th>
+            <HeaderCell column="apy" label="APY" />
+            <HeaderCell column="tvl" label="TVL" info="Total Value Locked in this vault" />
+            <HeaderCell column="liquidity" label="Liquidity" info="Instantly-withdrawable liquidity (idle / available cash), read live on-chain" />
+            <HeaderCell column="liquidPct" label="Liquid %" info="Withdrawable liquidity as a share of TVL" />
+            <th className="w-10 px-2 py-3" />
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((opp) => {
+            const liq = liquidity[opp.slug];
+            const loading = liq === undefined;
+            return (
               <tr
                 key={opp.slug}
                 onClick={() => onRowClick(opp.slug)}
-                className="border-t hover:bg-opacity-50 cursor-pointer transition-colors"
-                style={{
-                  borderColor: "var(--border)",
-                  background: idx % 2 === 0 ? "transparent" : "rgba(100,116,139,0.04)",
-                }}
+                className="group cursor-pointer border-t transition-colors"
+                style={{ borderColor: "var(--border)" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
-                <td className="px-4 py-3 text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
-                  {opp.chain.replace("-mainnet", "").toUpperCase()}
+                {/* Chain */}
+                <td className="px-4 py-4">
+                  <span style={{ color: "var(--text-secondary)" }} title={opp.chain}>
+                    <ChainIcon chain={opp.chain} size={22} />
+                  </span>
                 </td>
-                <td className="px-4 py-3">
-                  <div style={{ color: "var(--text-primary)" }} className="font-medium">
+
+                {/* Vault */}
+                <td className="px-4 py-4">
+                  <div className="font-semibold" style={{ color: "var(--text-primary)" }}>
                     {opp.name}
                   </div>
-                  <div style={{ color: "var(--text-secondary)" }} className="text-xs font-mono mt-0.5">
-                    {opp.vaultAddress.slice(0, 10)}…{opp.vaultAddress.slice(-8)}
-                  </div>
-                </td>
-                <td className="px-4 py-3" style={{ color: "var(--accent)" }}>
-                  —
-                </td>
-                <td className="px-4 py-3" style={{ color: "var(--text-primary)" }}>
-                  —
-                </td>
-                <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>
-                  —
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRowClick(opp.slug);
-                    }}
-                    className="text-xs font-medium transition-colors hover:text-[var(--accent)]"
+                  <a
+                    href={explorerAddressUrl(opp.chain as SupportedChain, opp.vaultAddress)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-0.5 inline-flex items-center gap-1 font-mono text-xs transition-colors hover:text-[var(--gr-green)]"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    View →
-                  </button>
+                    {shortAddr(opp.vaultAddress)}
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                      <path d="M15 3h6v6" /><path d="M10 14 21 3" />
+                    </svg>
+                  </a>
+                </td>
+
+                {/* APY */}
+                <td className="px-4 py-4 text-right font-semibold tabular-nums" style={{ color: "var(--gr-green)" }}>
+                  {opp.apy != null ? `${(opp.apy * 100).toFixed(2)}%` : "—"}
+                </td>
+
+                {/* TVL */}
+                <td className="px-4 py-4 text-right tabular-nums" style={{ color: "var(--text-primary)" }}>
+                  {opp.tvl != null ? fmtUsd(opp.tvl) : "—"}
+                </td>
+
+                {/* Liquidity */}
+                <td className="px-4 py-4 text-right tabular-nums" style={{ color: "var(--text-primary)" }}>
+                  {loading ? <Skeleton /> : liq ? fmtUsd(liq.liquidityUSD) : <span style={{ color: "var(--text-secondary)" }}>—</span>}
+                </td>
+
+                {/* Liquid % badge */}
+                <td className="px-4 py-4 text-right">
+                  {loading ? (
+                    <Skeleton />
+                  ) : liq ? (
+                    <PctBadge pct={liq.liquidPct} />
+                  ) : (
+                    <span style={{ color: "var(--text-secondary)" }}>—</span>
+                  )}
+                </td>
+
+                {/* Chevron */}
+                <td className="px-2 py-4 text-right">
+                  <svg
+                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    className="ml-auto transition-colors"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm">
-          <div style={{ color: "var(--text-secondary)" }}>
-            Page {page} of {totalPages}
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => onPageChange(Math.max(1, page - 1))}
-              disabled={page === 1}
-              className="rounded px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:border-[var(--accent)]"
-              style={{
-                borderColor: "var(--border)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              ← Previous
-            </button>
-            <button
-              onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-              disabled={page === totalPages}
-              className="rounded px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:border-[var(--accent)]"
-              style={{
-                borderColor: "var(--border)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              Next →
-            </button>
-          </div>
-        </div>
-      )}
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
+}
+
+function PctBadge({ pct }: { pct: number }) {
+  const good = pct >= LIQUID_PCT_GOOD;
+  const color = good ? "var(--positive)" : "var(--negative)";
+  return (
+    <span
+      className="inline-block rounded px-2 py-1 text-xs font-semibold tabular-nums"
+      style={{ color, background: good ? "rgba(34,197,94,0.14)" : "rgba(239,68,68,0.14)" }}
+    >
+      {(pct * 100).toFixed(1)}%
+    </span>
+  );
+}
+
+function Skeleton() {
+  return <span className="inline-block h-3 w-12 animate-pulse rounded" style={{ background: "var(--border)" }} />;
 }

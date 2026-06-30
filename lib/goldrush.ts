@@ -121,3 +121,65 @@ export async function getTokenData(chain: string, addresses: string[]): Promise<
 
     return out;
 }
+
+// ─── Historical price series ──────────────────────────────────────────────────
+
+export interface PriceSeriesPoint {
+    date: string; // YYYY-MM-DD
+    price: number; // USD
+}
+
+const seriesCache = new Map<string, { points: PriceSeriesPoint[]; ts: number }>();
+const SERIES_TTL = 30 * 60 * 1000; // daily data only changes once a day
+
+// Fetch a token's daily USD price for the last `days` days from GoldRush's
+// historical pricing endpoint. Used to chart a vault share token's value over
+// time and to derive trailing-window APY — all from real, observed prices (no
+// synthetic fallback, per the live-only policy). Returns oldest → newest, with
+// any null prints dropped. Empty array means GoldRush has no price history for
+// this token, which callers surface as an honest "no data" state.
+export async function getPriceSeries(chain: string, address: string, days = 90): Promise<PriceSeriesPoint[]> {
+    const addr = address.toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(addr)) return [];
+
+    const span = Math.min(Math.max(days, 1), 365);
+    const cacheKey = `${chain}:${addr}:${span}`;
+    const now = Date.now();
+    const cached = seriesCache.get(cacheKey);
+    if (cached && now - cached.ts < SERIES_TTL) return cached.points;
+
+    const apiKey = (process.env.GOLDRUSH_API_KEY ?? "").trim();
+    if (!apiKey) return [];
+
+    const to = new Date(now);
+    const from = new Date(now - span * 24 * 60 * 60 * 1000);
+    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+    const url = `https://api.covalenthq.com/v1/pricing/historical_by_addresses_v2/${chain}/USD/${addr}/?key=${apiKey}&from=${fmt(
+        from
+    )}&to=${fmt(to)}`;
+
+    try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 10000);
+        const resp = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+
+        const json = (await resp.json()) as {
+            error?: boolean;
+            data?: Array<{ prices?: Array<{ date?: string; price?: number | null }> }>;
+        };
+
+        if (json.error || !Array.isArray(json.data) || !json.data[0]?.prices) return [];
+
+        const points: PriceSeriesPoint[] = json.data[0]
+            .prices!.filter((p): p is { date: string; price: number } => typeof p?.date === "string" && p?.price != null)
+            .map((p) => ({ date: p.date, price: p.price }))
+            // GoldRush returns newest-first; chart math expects oldest → newest.
+            .sort((a, b) => a.date.localeCompare(b.date));
+
+        seriesCache.set(cacheKey, { points, ts: now });
+        return points;
+    } catch {
+        return [];
+    }
+}

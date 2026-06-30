@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import InfoTooltip from "@/components/InfoTooltip";
+import VaultCharts from "@/components/charts/VaultCharts";
 import { ToastContainer, useToast } from "@/components/Toast";
 import { type OpportunityWithMetrics } from "@/types/opportunity";
 import { getProtocolDeployUrl } from "@/lib/protocol-urls";
@@ -346,6 +347,11 @@ export default function OpportunityDetailPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Performance charts & APY-window analytics (live GoldRush price history) */}
+        <div className="max-w-6xl mx-auto mt-6">
+          <VaultCharts address={opportunity.vaultAddress} chain={opportunity.chain} vaultName={opportunity.name} />
         </div>
       </div>
 

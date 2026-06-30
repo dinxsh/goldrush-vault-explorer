@@ -119,11 +119,16 @@ export default function EarnPage() {
       {/* Header */}
       <div className="border-b px-4 py-8 sm:px-6 lg:px-8" style={{ borderColor: "var(--border)" }}>
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
-            Maximize Your Yield
+          <span className="inline-block rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
+            // Vaults
+          </span>
+          <h1 className="mt-3 text-4xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
+            <span className="rounded px-1.5" style={{ background: "var(--gr-green)", color: "var(--bg)" }}>Earn</span>{" "}
+            Vaults
           </h1>
-          <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-            {pagination?.total ? `${pagination.total} opportunities` : "Loading opportunities..."} across multiple chains and protocols
+          <p className="mt-3 max-w-xl text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            Live, decomposed yield opportunities across every supported chain and protocol — sourced directly from the
+            blockchain via GoldRush. Filter, compare, and dive into per-vault performance.
           </p>
 
           {/* Stats Grid */}
@@ -132,32 +137,20 @@ export default function EarnPage() {
             const oppsWithTvl = opportunities.filter((o) => o.tvl != null);
             if (oppsWithApy.length === 0 || oppsWithTvl.length === 0) return null;
 
+            const stats = [
+              { label: "Eligible Vaults", value: (pagination?.total ?? opportunities.length).toLocaleString() },
+              { label: "Best APY", value: `${(Math.max(...oppsWithApy.map((o) => o.apy as number)) * 100).toFixed(2)}%` },
+              { label: "Total TVL", value: `$${(oppsWithTvl.reduce((sum: number, o) => sum + (o.tvl as number), 0) / 1_000_000_000).toFixed(1)}B` },
+            ];
+
             return (
-              <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
-                  <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Top APY</div>
-                  <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
-                    {(Math.max(...oppsWithApy.map((o) => o.apy as number)) * 100).toFixed(1)}%
+              <div className="mt-6 grid grid-cols-1 gap-px overflow-hidden rounded-xl border sm:grid-cols-3" style={{ borderColor: "var(--border)", background: "var(--border)" }}>
+                {stats.map((s) => (
+                  <div key={s.label} className="p-5" style={{ background: "var(--card)" }}>
+                    <div className="text-xs uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>{s.label}</div>
+                    <div className="mt-1 text-2xl font-bold" style={{ color: "var(--gr-green)" }}>{s.value}</div>
                   </div>
-                </div>
-                <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
-                  <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Total TVL</div>
-                  <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
-                    ${(oppsWithTvl.reduce((sum: number, o) => sum + (o.tvl as number), 0) / 1_000_000_000).toFixed(1)}B
-                  </div>
-                </div>
-                <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
-                  <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Avg APY</div>
-                  <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
-                    {(oppsWithApy.reduce((sum: number, o) => sum + (o.apy as number), 0) / oppsWithApy.length * 100).toFixed(1)}%
-                  </div>
-                </div>
-                <div className="rounded-lg p-4" style={{ background: "var(--border)" }}>
-                  <div className="text-xs" style={{ color: "var(--text-secondary)" }}>Available Chains</div>
-                  <div className="mt-1 text-2xl font-bold" style={{ color: "var(--accent)" }}>
-                    {new Set(opportunities.map((o) => o.chain)).size}
-                  </div>
-                </div>
+                ))}
               </div>
             );
           })()}
@@ -167,23 +160,24 @@ export default function EarnPage() {
       {/* Filters & Content */}
       <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          {/* Filters & View Toggle */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex-1">
-              <OpportunityFilters
-                chain={chain}
-                protocol={protocol}
-                riskLevel={riskLevel}
-                search={search}
-                sort={sort}
-                minApy={minApy}
-                maxApy={maxApy}
-                onFilterChange={updateFilters}
-              />
+          {/* Filters */}
+          <OpportunityFilters
+            chain={chain}
+            protocol={protocol}
+            riskLevel={riskLevel}
+            search={search}
+            sort={sort}
+            minApy={minApy}
+            maxApy={maxApy}
+            onFilterChange={updateFilters}
+          />
+
+          {/* Result count + View Toggle */}
+          <div className="mt-4 flex items-center justify-between">
+            <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
+              {pagination?.total != null ? `${pagination.total.toLocaleString()} vaults` : ""}
             </div>
-            <div className="shrink-0">
-              <ViewToggle view={view} onViewChange={setView} />
-            </div>
+            <ViewToggle view={view} onViewChange={setView} />
           </div>
 
           {/* Error State */}

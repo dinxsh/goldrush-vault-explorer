@@ -9,6 +9,17 @@
     --text-secondary: #888;
     --positive: #22c55e;
     --negative: #ef4444;
+
+    /* GoldRush brand green — accent for the vault filters, charts and APY-window
+       analytics. Kept distinct from the legacy orange --accent so the rest of the
+       app is untouched while these surfaces read as on-brand GoldRush. */
+    --gr-green: #5ce17f;
+    --gr-green-deep: #2faf55;
+    --gr-green-dim: rgba(92, 225, 127, 0.12);
+    --gr-green-line: rgba(92, 225, 127, 0.28);
+    /* Slightly raised surface for chips/inputs against --bg. */
+    --surface: #161616;
+    --surface-hover: #1f1f1f;
 }
 
 body {

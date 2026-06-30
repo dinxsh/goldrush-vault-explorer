@@ -30,36 +30,57 @@ export default function OpportunityDetailPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchOpportunity() {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await fetch(`/api/opportunities/${slug}`);
-        const data = await response.json();
+      setLoading(true);
+      setError(null);
 
-        if (!response.ok) {
-          setError(data);
-          addToast(data.error || "Failed to load opportunity", "error");
-          return;
+      // Live blockchain reads can briefly time out (cold start, RPC blip). Retry a few
+      // times with backoff before surfacing an error so transient failures self-heal
+      // instead of dumping the user on a full error page.
+      const MAX_ATTEMPTS = 3;
+      let lastError: ApiError | null = null;
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+          const response = await fetch(`/api/opportunities/${slug}`);
+          const data = await response.json();
+
+          if (response.ok) {
+            if (!cancelled) setOpportunity(data);
+            lastError = null;
+            break;
+          }
+
+          lastError = data;
+          // Only retry transient live-data failures; 400/404 are terminal.
+          if (response.status < 500 || attempt === MAX_ATTEMPTS) break;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Failed to load opportunity";
+          lastError = {
+            error: message,
+            errorCode: "NETWORK_ERROR",
+            timestamp: new Date().toISOString(),
+            suggestedAction: "Check your internet connection and try again.",
+          };
+          if (attempt === MAX_ATTEMPTS) break;
         }
-
-        setOpportunity(data);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load opportunity";
-        const apiError: ApiError = {
-          error: message,
-          errorCode: "NETWORK_ERROR",
-          timestamp: new Date().toISOString(),
-          suggestedAction: "Check your internet connection and try again.",
-        };
-        setError(apiError);
-        addToast(message, "error");
-      } finally {
-        setLoading(false);
+        await new Promise((resolve) => setTimeout(resolve, 1200 * attempt));
       }
+
+      if (cancelled) return;
+      if (lastError) {
+        setError(lastError);
+        addToast(lastError.error || "Failed to load opportunity", "error");
+      }
+      setLoading(false);
     }
 
     if (slug) fetchOpportunity();
+    return () => {
+      cancelled = true;
+    };
   }, [slug, addToast]);
 
   if (loading) {

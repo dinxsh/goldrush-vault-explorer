@@ -7,7 +7,12 @@ import { type NextRequest, NextResponse } from "next/server";
 export const dynamic = 'force-dynamic';
 export const revalidate = 60; // Cache for 60 seconds
 
-const VAULT_FETCH_TIMEOUT = 8000; // 8 seconds
+// Live decomposition is 2-4s when healthy; the function's maxDuration is 60s (vercel.json).
+// 8s was too tight - a cold start or a single provider failover would trip it and surface a
+// hard error page. 15s leaves headroom for cold start + fast RPC failover while still
+// bounding the wait. Combined with retryCount:0 transports (lib/rpc.ts), failover happens
+// inside this budget instead of after it.
+const VAULT_FETCH_TIMEOUT = 15000;
 
 export async function GET(
   req: NextRequest,

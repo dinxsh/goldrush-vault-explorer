@@ -24,18 +24,25 @@ export function getClient(chain: SupportedChain): PublicClient {
     if (!client) {
         const apiKey = (process.env.GOLDRUSH_API_KEY ?? "").trim();
         const transports = [];
+        // Short per-transport timeout + no in-place retry: a slow or rate-limited
+        // provider must fail over to the next node fast, well inside the route's fetch
+        // budget. viem's default retryCount=3 with exponential backoff retries a degraded
+        // provider in place instead of failing over - that is what blows the timeout and
+        // turns a transient blip into a hard error page.
         if (apiKey) {
             transports.push(
                 http(`https://rpc.goldrushdata.com/v1/${chain}`, {
                     fetchOptions: { headers: { Authorization: `Bearer ${apiKey}` } },
-                    timeout: 8000,
+                    timeout: 3000,
+                    retryCount: 0,
                 })
             );
         }
-        for (const url of PUBLIC_RPCS[chain]) transports.push(http(url, { timeout: 8000 }));
+        for (const url of PUBLIC_RPCS[chain]) transports.push(http(url, { timeout: 3000, retryCount: 0 }));
         client = createPublicClient({
             batch: { multicall: true },
-            transport: fallback(transports),
+            // Walk the provider chain in order (GoldRush first), at most twice.
+            transport: fallback(transports, { retryCount: 1, retryDelay: 200 }),
         }) as PublicClient;
         clients.set(chain, client);
     }

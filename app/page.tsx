@@ -1,215 +1,347 @@
 "use client";
 
-import AddressInput from "@/components/AddressInput";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import OpportunityCard from "@/components/OpportunityCard";
+import OpportunityFilters from "@/components/OpportunityFilters";
+import ViewToggle from "@/components/ViewToggle";
+import OpportunityTable from "@/components/OpportunityTable";
+import { ToastContainer, useToast } from "@/components/Toast";
+import { type Opportunity } from "@/types/opportunity";
 import { type SupportedChain } from "@/types/vault";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 
-const CHAINS: { value: SupportedChain; label: string }[] = [
-    { value: "eth-mainnet", label: "Ethereum" },
-    { value: "base-mainnet", label: "Base" },
-    { value: "matic-mainnet", label: "Polygon" },
-    { value: "arbitrum-mainnet", label: "Arbitrum" },
-    { value: "optimism-mainnet", label: "Optimism" },
-    { value: "bsc-mainnet", label: "BNB Chain" },
-];
+interface PaginationData {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
 
-const PRESETS: { label: string; protocol: string; address: string; chain: SupportedChain; desc: string }[] = [
-    {
-        label: "Steakhouse USDC",
-        protocol: "Morpho · ETH",
-        address: "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
-        chain: "eth-mainnet",
-        desc: "MetaMorpho USDC vault by Steakhouse Finance — allocates to Morpho Blue markets",
-    },
-    {
-        label: "Steakhouse USDT",
-        protocol: "Morpho · ETH",
-        address: "0xbEef047a543E45807105E51A8BBEFCc5950fcfBa",
-        chain: "eth-mainnet",
-        desc: "MetaMorpho USDT vault by Steakhouse Finance — rich Deposit/Withdraw tx history",
-    },
-    {
-        label: "Gauntlet WETH Core",
-        protocol: "Morpho · ETH",
-        address: "0x4881Ef0BF6d2365D3dd6499ccd7532bcdBCE0658",
-        chain: "eth-mainnet",
-        desc: "MetaMorpho WETH vault by Gauntlet — supplies to LRT-collateralised Morpho Blue markets",
-    },
-    {
-        label: "Gauntlet USDC Core",
-        protocol: "Morpho · ETH",
-        address: "0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458",
-        chain: "eth-mainnet",
-        desc: "MetaMorpho USDC vault by Gauntlet — risk-optimised allocation across Morpho Blue",
-    },
-    {
-        label: "Moonwell Flagship USDC",
-        protocol: "Morpho · Base",
-        address: "0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca",
-        chain: "base-mainnet",
-        desc: "Base-native MetaMorpho USDC vault curated by Moonwell governance",
-    },
-    {
-        label: "Re7 WETH",
-        protocol: "Morpho · ETH",
-        address: "0x78Fc2c2eD1A4cDb5402365934aE5648aDAd094d0",
-        chain: "eth-mainnet",
-        desc: "MetaMorpho WETH vault by Re7 Capital — focused on ETH-denominated yield strategies",
-    },
-];
+interface ApiError {
+  error: string;
+  errorCode: string;
+  timestamp: string;
+  suggestedAction?: string;
+}
 
-export default function HomePage() {
-    const router = useRouter();
-    const [address, setAddress] = useState("");
-    const [chain, setChain] = useState<SupportedChain>("eth-mainnet");
+export default function EarnPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toasts, addToast, removeToast } = useToast();
 
-    function navigate(addr: string, ch: SupportedChain) {
-        router.push(`/vault/${addr}?chain=${ch}`);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [pagination, setPagination] = useState<PaginationData | null>(null);
+  const [meta, setMeta] = useState<{ liveCount?: number; curatedCount?: number } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [view, setView] = useState<"grid" | "table">("grid");
+
+  // Filter state from URL
+  const chain = (searchParams.get("chain") as SupportedChain) || undefined;
+  const protocol = searchParams.get("protocol") || undefined;
+  const riskLevel = searchParams.get("risk") || undefined;
+  const search = searchParams.get("q") || "";
+  const sort = searchParams.get("sort") || "apy-desc";
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  // 24 divides evenly into the responsive grid (1 / 2 / 3 columns), so a full
+  // page never leaves an orphan empty cell in the last row. 20 did (20 % 3 = 2).
+  const limit = parseInt(searchParams.get("limit") || "24", 10);
+  const minApy = searchParams.get("minApy") ? parseFloat(searchParams.get("minApy")!) : undefined;
+  const maxApy = searchParams.get("maxApy") ? parseFloat(searchParams.get("maxApy")!) : undefined;
+
+  // Fetch opportunities
+  useEffect(() => {
+    async function fetchOpportunities() {
+      try {
+        setLoading(true);
+        setError(null);
+        const params = new URLSearchParams();
+        if (chain) params.append("chain", chain);
+        if (protocol) params.append("protocol", protocol);
+        if (riskLevel) params.append("riskLevel", riskLevel);
+        if (search) params.append("q", search);
+        if (minApy !== undefined) params.append("minApy", minApy.toString());
+        if (maxApy !== undefined) params.append("maxApy", maxApy.toString());
+        params.append("sort", sort);
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
+
+        const response = await fetch(`/api/opportunities?${params}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          setError(data);
+          setOpportunities([]);
+          setPagination(null);
+          addToast(data.error || "Failed to fetch opportunities", "error");
+          return;
+        }
+
+        setOpportunities(data.opportunities || []);
+        setPagination(data.pagination || null);
+        setMeta(data.metadata || null);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load opportunities";
+        setError({
+          error: message,
+          errorCode: "NETWORK_ERROR",
+          timestamp: new Date().toISOString(),
+          suggestedAction: "Check your internet connection and try again.",
+        });
+        setOpportunities([]);
+        setPagination(null);
+        addToast(message, "error");
+      } finally {
+        setLoading(false);
+      }
     }
 
-    function handleExplore() {
-        if (!address) return;
-        navigate(address, chain);
-    }
+    fetchOpportunities();
+  }, [chain, protocol, riskLevel, search, sort, page, limit, minApy, maxApy]);
 
-    return (
-        <main className="flex min-h-screen items-center justify-center px-4 py-12" style={{ background: "var(--bg)" }}>
-            <div
-                className="w-full max-w-lg rounded-lg border p-8 flex flex-col gap-6"
-                style={{ background: "var(--card)", borderColor: "var(--border)" }}
-            >
-                {/* Heading */}
-                <div className="flex flex-col gap-2">
-                    <h1
-                        className="text-2xl font-bold tracking-tight"
-                        style={{
-                            color: "var(--accent)",
-                            fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-                        }}
-                    >
-                        GoldRush Vault Explorer
-                    </h1>
-                    <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                        Paste any EVM vault address to decompose its underlying holdings.
-                    </p>
-                </div>
+  function updateFilters(newParams: Record<string, string | undefined>) {
+    const params = new URLSearchParams(searchParams);
+    Object.entries(newParams).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    });
+    // Reset to page 1 when filters change
+    params.set("page", "1");
+    router.push(`/?${params.toString()}`);
+  }
 
-                {/* Address input */}
-                <div className="flex flex-col gap-2">
-                    <label
-                        className="text-xs font-semibold uppercase tracking-wider"
-                        style={{ color: "var(--text-secondary)" }}
-                    >
-                        Vault address
-                    </label>
-                    <AddressInput value={address} onChange={setAddress} placeholder="0x..." />
-                </div>
+  function goToPage(newPage: number) {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", newPage.toString());
+    router.push(`/?${params.toString()}`);
+  }
 
-                {/* Network select */}
-                <div className="flex flex-col gap-2">
-                    <label
-                        className="text-xs font-semibold uppercase tracking-wider"
-                        style={{ color: "var(--text-secondary)" }}
-                    >
-                        Network
-                    </label>
-                    <select
-                        value={chain}
-                        onChange={(e) => setChain(e.target.value as SupportedChain)}
-                        className="w-full rounded border px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--accent)]"
-                        style={{
-                            background: "var(--card)",
-                            color: "var(--text-primary)",
-                            borderColor: "var(--border)",
-                        }}
-                    >
-                        {CHAINS.map((c) => (
-                            <option key={c.value} value={c.value}>
-                                {c.label}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+  return (
+    <main className="flex min-h-screen flex-col" style={{ background: "var(--bg)" }}>
+      {/* Header */}
+      <div className="border-b px-4 py-8 sm:px-6 lg:px-8" style={{ borderColor: "var(--border)" }}>
+        <div className="max-w-7xl mx-auto">
+          <span className="inline-block rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
+            // Vaults
+          </span>
+          <h1 className="mt-3 text-4xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
+            <span className="rounded px-1.5" style={{ background: "var(--gr-green)", color: "var(--bg)" }}>Earn</span>{" "}
+            Vaults
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            Live, decomposed yield opportunities across every supported chain and protocol — sourced directly from the
+            blockchain via GoldRush. Filter, compare, and dive into per-vault performance.
+          </p>
 
-                {/* Explore button */}
-                <button
-                    onClick={handleExplore}
-                    disabled={!address}
-                    className="w-full rounded px-4 py-3 text-sm font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{
-                        background: "var(--accent)",
-                        color: "#0f0f0f",
-                    }}
-                >
-                    Explore →
-                </button>
+          {/* Stats Grid */}
+          {!loading && opportunities.length > 0 && (() => {
+            const oppsWithApy = opportunities.filter((o) => o.apy != null);
+            const oppsWithTvl = opportunities.filter((o) => o.tvl != null);
+            if (oppsWithApy.length === 0 || oppsWithTvl.length === 0) return null;
 
-                {/* Discover Opportunities Link */}
-                <div className="relative">
-                    <div className="absolute inset-0 flex items-center" style={{ borderColor: "var(--border)" }}>
-                        <div className="w-full border-t" style={{ borderColor: "var(--border)" }} />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase" style={{ background: "var(--card)" }}>
-                        <span style={{ color: "var(--text-secondary)", paddingLeft: "8px", paddingRight: "8px" }}>Or</span>
-                    </div>
-                </div>
+            const stats = [
+              { label: "Eligible Vaults", value: (pagination?.total ?? opportunities.length).toLocaleString() },
+              { label: "Best APY", value: `${(Math.max(...oppsWithApy.map((o) => o.apy as number)) * 100).toFixed(2)}%` },
+              { label: "Total TVL", value: `$${(oppsWithTvl.reduce((sum: number, o) => sum + (o.tvl as number), 0) / 1_000_000_000).toFixed(1)}B` },
+            ];
 
-                <button
-                    onClick={() => router.push("/earn")}
-                    className="w-full rounded border px-4 py-3 text-sm font-semibold transition-colors"
-                    style={{
-                        background: "rgba(249,115,22,0.08)",
-                        borderColor: "var(--accent)",
-                        color: "var(--accent)",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(249,115,22,0.16)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(249,115,22,0.08)")}
-                >
-                    Discover Opportunities →
-                </button>
+            return (
+              <div className="mt-6 grid grid-cols-1 gap-px overflow-hidden rounded-xl border sm:grid-cols-3" style={{ borderColor: "var(--border)", background: "var(--border)" }}>
+                {stats.map((s) => (
+                  <div key={s.label} className="p-5" style={{ background: "var(--card)" }}>
+                    <div className="text-xs uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>{s.label}</div>
+                    <div className="mt-1 text-2xl font-bold" style={{ color: "var(--gr-green)" }}>{s.value}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      </div>
 
-                {/* Presets */}
-                <div className="flex flex-col gap-3">
-                    <span
-                        className="text-xs font-semibold uppercase tracking-wider"
-                        style={{ color: "var(--text-secondary)" }}
-                    >
-                        Featured vaults
-                    </span>
-                    <div className="flex flex-col gap-2">
-                        {PRESETS.map((preset) => (
-                            <button
-                                key={preset.address}
-                                onClick={() => navigate(preset.address, preset.chain)}
-                                className="rounded border px-3 py-2.5 text-left transition-colors hover:border-[var(--accent)] group"
-                                style={{
-                                    background: "transparent",
-                                    borderColor: "var(--border)",
-                                }}
-                            >
-                                <div className="flex items-center justify-between gap-2">
-                                    <span
-                                        className="text-sm font-medium group-hover:text-[var(--accent)] transition-colors"
-                                        style={{ color: "var(--text-primary)" }}
-                                    >
-                                        {preset.label}
-                                    </span>
-                                    <span
-                                        className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                                        style={{ background: "rgba(249,115,22,0.12)", color: "var(--accent)" }}
-                                    >
-                                        {preset.protocol}
-                                    </span>
-                                </div>
-                                <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                                    {preset.desc}
-                                </p>
-                            </button>
-                        ))}
-                    </div>
-                </div>
+      {/* Filters & Content */}
+      <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Filters */}
+          <OpportunityFilters
+            chain={chain}
+            protocol={protocol}
+            riskLevel={riskLevel}
+            search={search}
+            sort={sort}
+            minApy={minApy}
+            maxApy={maxApy}
+            onFilterChange={updateFilters}
+          />
+
+          {/* Result count + View Toggle */}
+          <div className="mt-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+              {pagination?.total != null && <span>{pagination.total.toLocaleString()} vaults</span>}
+              {meta?.liveCount != null && meta.liveCount > 0 && (
+                <span className="flex items-center gap-1.5 rounded-full px-2 py-0.5" style={{ background: "var(--gr-green-dim)", color: "var(--gr-green)" }}>
+                  <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--gr-green)" }} />
+                  {meta.liveCount.toLocaleString()} live · {meta.curatedCount ?? 0} curated
+                </span>
+              )}
             </div>
-        </main>
-    );
+            <ViewToggle view={view} onViewChange={setView} />
+          </div>
+
+          {/* Error State */}
+          {error && !loading && (
+            <div className="mt-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 text-red-500 text-xl">⚠</div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold" style={{ color: "var(--text-primary)" }}>
+                      {error.error}
+                    </h3>
+                    {error.suggestedAction && (
+                      <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+                        {error.suggestedAction}
+                      </p>
+                    )}
+                    <div className="mt-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+                      Error Code: <code>{error.errorCode}</code> • {new Date(error.timestamp).toLocaleTimeString()}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full mt-2 rounded px-3 py-2 text-sm font-medium transition-colors"
+                  style={{
+                    background: "var(--accent)",
+                    color: "var(--bg)",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {loading && (
+            <div className="mt-6 flex flex-col gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-24 rounded border animate-pulse"
+                  style={{ background: "var(--border)", opacity: 1 - i * 0.2 }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && !error && opportunities.length === 0 && (
+            <div className="mt-6 text-center py-12">
+              <p style={{ color: "var(--text-secondary)" }}>No opportunities match your filters. Try adjusting them.</p>
+            </div>
+          )}
+
+          {/* Grid View */}
+          {!loading && !error && opportunities.length > 0 && view === "grid" && (
+            <div className="mt-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {opportunities.map((opp) => (
+                  <div key={opp.slug} onClick={() => router.push(`/earn/${opp.slug}`)} className="cursor-pointer">
+                    <OpportunityCard opportunity={opp} />
+                  </div>
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {pagination && (
+                <div className="mt-6 flex items-center justify-between rounded-lg border p-4" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
+                  <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                    Page {pagination.page} of {pagination.pages} • Showing {opportunities.length} of {pagination.total} results
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => goToPage(pagination.page - 1)}
+                      disabled={!pagination.hasPreviousPage}
+                      className="rounded px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        background: pagination.hasPreviousPage ? "var(--accent)" : "var(--border)",
+                        color: pagination.hasPreviousPage ? "var(--bg)" : "var(--text-secondary)",
+                      }}
+                    >
+                      ← Previous
+                    </button>
+                    <button
+                      onClick={() => goToPage(pagination.page + 1)}
+                      disabled={!pagination.hasNextPage}
+                      className="rounded px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        background: pagination.hasNextPage ? "var(--accent)" : "var(--border)",
+                        color: pagination.hasNextPage ? "var(--bg)" : "var(--text-secondary)",
+                      }}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Table View */}
+          {!loading && !error && opportunities.length > 0 && view === "table" && (
+            <div className="mt-6">
+              <OpportunityTable
+                opportunities={opportunities}
+                onRowClick={(slug) => router.push(`/earn/${slug}`)}
+                page={page}
+                onPageChange={goToPage}
+                pageSize={limit}
+              />
+
+              {/* Pagination Controls */}
+              {pagination && (
+                <div className="mt-6 flex items-center justify-between rounded-lg border p-4" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
+                  <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                    Page {pagination.page} of {pagination.pages} • Showing {opportunities.length} of {pagination.total} results
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => goToPage(pagination.page - 1)}
+                      disabled={!pagination.hasPreviousPage}
+                      className="rounded px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        background: pagination.hasPreviousPage ? "var(--accent)" : "var(--border)",
+                        color: pagination.hasPreviousPage ? "var(--bg)" : "var(--text-secondary)",
+                      }}
+                    >
+                      ← Previous
+                    </button>
+                    <button
+                      onClick={() => goToPage(pagination.page + 1)}
+                      disabled={!pagination.hasNextPage}
+                      className="rounded px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        background: pagination.hasNextPage ? "var(--accent)" : "var(--border)",
+                        color: pagination.hasNextPage ? "var(--bg)" : "var(--text-secondary)",
+                      }}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+    </main>
+  );
 }

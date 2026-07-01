@@ -1,49 +1,60 @@
-import { useState } from "react";
+"use client";
+
+import { useRef, useState } from "react";
 
 interface InfoTooltipProps {
   text: string;
-  children?: React.ReactNode;
 }
 
-export default function InfoTooltip({ text, children }: InfoTooltipProps) {
-  const [visible, setVisible] = useState(false);
+// A small "?" affordance whose tooltip is positioned with `fixed` coordinates
+// read from the trigger's bounding box. This deliberately avoids an absolutely-
+// positioned popup: the table header lives inside an `overflow-hidden` container,
+// which would clip a normal absolute tooltip and make the icon look broken/empty.
+export default function InfoTooltip({ text }: InfoTooltipProps) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+
+  const show = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setPos({ x: r.left + r.width / 2, y: r.top });
+  };
+  const hide = () => setPos(null);
 
   return (
-    <div className="relative inline-block">
+    <>
       <button
-        className="inline-flex items-center justify-center w-4 h-4 rounded-full text-xs font-bold transition-colors hover:bg-opacity-80"
+        ref={btnRef}
+        type="button"
+        aria-label={text}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-xs font-bold transition-colors hover:brightness-125"
         style={{ background: "rgba(100,116,139,0.2)", color: "#64748b" }}
-        onMouseEnter={() => setVisible(true)}
-        onMouseLeave={() => setVisible(false)}
-        onClick={() => setVisible(!visible)}
-        title={text}
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={hide}
+        onClick={(e) => {
+          e.stopPropagation();
+          pos ? hide() : show();
+        }}
       >
         ?
       </button>
 
-      {visible && (
+      {pos && (
         <div
-          className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 rounded px-2 py-1 text-xs whitespace-nowrap z-50"
+          role="tooltip"
+          className="pointer-events-none fixed z-[100] max-w-xs -translate-x-1/2 -translate-y-full rounded px-2.5 py-1.5 text-xs font-normal normal-case leading-snug tracking-normal shadow-lg"
           style={{
+            left: pos.x,
+            top: pos.y - 8,
             background: "var(--accent)",
             color: "#0f0f0f",
+            whiteSpace: "normal",
           }}
         >
           {text}
-          <div
-            className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-0.5"
-            style={{
-              width: 0,
-              height: 0,
-              borderLeft: "4px solid transparent",
-              borderRight: "4px solid transparent",
-              borderTop: `4px solid var(--accent)`,
-            }}
-          />
         </div>
       )}
-
-      {children}
-    </div>
+    </>
   );
 }

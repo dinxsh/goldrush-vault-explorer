@@ -1,9 +1,11 @@
+import { type SupportedChain } from "@/types/vault";
+
 // Protocol deployment URLs - maps protocols to their main application URLs
 export const PROTOCOL_URLS: Record<string, string> = {
   "Morpho": "https://app.morpho.org",
   "Aave": "https://app.aave.com",
   "Curve": "https://curve.fi",
-  "Yearn": "https://yearn.finance",
+  "Yearn": "https://yearn.fi",
   "Compound": "https://compound.finance",
   "Lido": "https://lido.fi",
   "Rocket Pool": "https://rocketpool.net",
@@ -28,22 +30,52 @@ export function getProtocolUrl(protocol: string): string {
   return PROTOCOL_URLS[protocol] || "https://defi.llama.fi";
 }
 
-// Get protocol name for URL building
-export function getProtocolDeployUrl(protocol: string, asset?: string, chain?: string): string {
+// Morpho routes vaults at /{chainSlug}/vault/{address}. These are the chains
+// Morpho actually supports (verified against their network switcher) — note
+// Optimism is not one of them, so we fall back to the vault list there.
+const MORPHO_CHAIN_SLUG: Partial<Record<SupportedChain, string>> = {
+  "eth-mainnet": "ethereum",
+  "base-mainnet": "base",
+  "matic-mainnet": "polygon",
+  "arbitrum-mainnet": "arbitrum",
+};
+
+// Yearn routes vaults at /vaults/{numericChainId}/{address}.
+const YEARN_CHAIN_ID: Partial<Record<SupportedChain, number>> = {
+  "eth-mainnet": 1,
+  "optimism-mainnet": 10,
+  "matic-mainnet": 137,
+  "base-mainnet": 8453,
+  "arbitrum-mainnet": 42161,
+};
+
+// Build the deep link that drops the user straight onto the vault they selected,
+// rather than the protocol's generic landing page. Falls back to a sensible list
+// page when we can't construct a direct link (unknown chain / missing address).
+export function getProtocolDeployUrl(
+  protocol: string,
+  opts: { vaultAddress?: string; chain?: SupportedChain; asset?: string } = {}
+): string {
+  const { vaultAddress, chain, asset } = opts;
   const baseUrl = getProtocolUrl(protocol);
 
-  // Add protocol-specific parameters if needed
   switch (protocol) {
-    case "Morpho":
-      return `${baseUrl}/ethereum/markets`;
+    case "Morpho": {
+      const slug = chain ? MORPHO_CHAIN_SLUG[chain] : undefined;
+      if (slug && vaultAddress) return `https://app.morpho.org/${slug}/vault/${vaultAddress}`;
+      return "https://app.morpho.org/vaults";
+    }
+    case "Yearn": {
+      const id = chain ? YEARN_CHAIN_ID[chain] : undefined;
+      if (id && vaultAddress) return `https://yearn.fi/vaults/${id}/${vaultAddress}`;
+      return "https://yearn.fi/vaults";
+    }
     case "Aave":
-      return `${baseUrl}`;
+      return baseUrl;
     case "Curve":
       return `${baseUrl}/pools`;
-    case "Yearn":
-      return `${baseUrl}/vaults`;
     case "Compound":
-      return `${baseUrl}`;
+      return baseUrl;
     case "Uniswap":
       return `${baseUrl}/position/create?defaultTokens=${asset || ""}`;
     default:

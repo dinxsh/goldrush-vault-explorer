@@ -151,11 +151,11 @@ export default function OpportunityDetailPage() {
               Retry
             </button>
             <button
-              onClick={() => router.push("/earn")}
+              onClick={() => router.push("/")}
               className="flex-1 rounded px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-80"
               style={{ background: "var(--accent)", color: "#0f0f0f" }}
             >
-              Back to Opportunities
+              Back to Earn
             </button>
           </div>
         </div>
@@ -187,11 +187,11 @@ export default function OpportunityDetailPage() {
       {/* Back Button */}
       <div className="border-b px-4 py-4 sm:px-6 lg:px-8" style={{ borderColor: "var(--border)" }}>
         <button
-          onClick={() => router.push("/earn")}
+          onClick={() => router.push("/")}
           className="text-sm transition-colors hover:text-[var(--accent)]"
           style={{ color: "var(--text-secondary)" }}
         >
-          ← Back to Opportunities
+          ← Back to Earn
         </button>
       </div>
 
@@ -370,7 +370,11 @@ export default function OpportunityDetailPage() {
           </button>
           <button
             onClick={() => {
-              const url = getProtocolDeployUrl(opportunity.protocol, opportunity.asset);
+              const url = getProtocolDeployUrl(opportunity.protocol, {
+                vaultAddress: opportunity.vaultAddress,
+                chain: opportunity.chain,
+                asset: opportunity.asset,
+              });
               window.open(url, "_blank");
             }}
             className="flex-1 rounded px-4 py-3 text-sm font-semibold transition-opacity hover:opacity-80"

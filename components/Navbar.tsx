@@ -34,14 +34,14 @@ export default function Navbar() {
               className="text-xs transition-colors hover:text-[var(--accent)]"
               style={{ color: "var(--text-secondary)" }}
             >
-              Explore
+              Earn
             </Link>
             <Link
-              href="/earn"
+              href="/explore"
               className="text-xs transition-colors hover:text-[var(--accent)]"
               style={{ color: "var(--text-secondary)" }}
             >
-              Opportunities
+              Explore
             </Link>
             <Link
               href="/docs"

@@ -30,17 +30,35 @@ function useVaultSeries(address: string, chain: string, days = 90) {
     let cancelled = false;
     setLoading(true);
     setFailed(false);
-    fetch(`/api/vault-series?address=${address}&chain=${chain}&days=${days}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((json) => {
-        if (!cancelled) setData(json);
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+
+    // The upstream price APIs occasionally throttle or time out under load. A
+    // single failed fetch shouldn't blank the chart for a vault that has data,
+    // so retry a couple of times with backoff before giving up.
+    async function load() {
+      const delays = [0, 600, 1500];
+      for (let attempt = 0; attempt < delays.length; attempt++) {
+        if (delays[attempt]) await new Promise((r) => setTimeout(r, delays[attempt]));
+        if (cancelled) return;
+        try {
+          const r = await fetch(`/api/vault-series?address=${address}&chain=${chain}&days=${days}`);
+          if (!r.ok) throw new Error(String(r.status));
+          const json = await r.json();
+          if (cancelled) return;
+          // A genuine "no history" answer (200 + hasData:false) is final — don't
+          // retry it. Only network/5xx failures fall through to another attempt.
+          setData(json);
+          setLoading(false);
+          return;
+        } catch {
+          if (attempt === delays.length - 1 && !cancelled) {
+            setFailed(true);
+            setLoading(false);
+          }
+        }
+      }
+    }
+
+    load();
     return () => {
       cancelled = true;
     };

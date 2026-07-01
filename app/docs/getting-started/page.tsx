@@ -22,10 +22,10 @@ export default function GettingStartedPage() {
 
         <section>
           <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
-            2. Browse Opportunities
+            2. Browse Earn Vaults
           </h2>
           <p className="mt-3" style={{ color: "var(--text-secondary)" }}>
-            Navigate to the Opportunities section and explore available vaults. Filter by:
+            Navigate to the Earn section and explore available vaults. Filter by:
           </p>
           <ul className="mt-2 space-y-1 ml-4" style={{ color: "var(--text-secondary)" }}>
             <li>• <strong>Chain</strong> — Select your preferred blockchain</li>

@@ -39,8 +39,8 @@ export default function DocsPage() {
           </h2>
           <p className="mt-3" style={{ color: "var(--text-secondary)" }}>
             Explore yield opportunities by navigating to the{" "}
-            <a href="/earn" className="font-semibold" style={{ color: "var(--accent)" }}>
-              Opportunities
+            <a href="/" className="font-semibold" style={{ color: "var(--accent)" }}>
+              Earn
             </a>
             {" "}section. Filter by chain, protocol, and risk level to find strategies matching your goals.
           </p>

@@ -12,6 +12,7 @@
 
 import { type Opportunity } from "@/types/opportunity";
 import { type SupportedChain } from "@/types/vault";
+import { getPriceSeries } from "./goldrush";
 
 // ─── Chain maps ───────────────────────────────────────────────────────────────
 
@@ -369,6 +370,15 @@ interface MorphoSeriesPoint {
   price: number; // USD value of one share
 }
 
+// Daily data changes at most once a day, and the source APIs (Morpho, Kong)
+// throttle under concurrent load — which used to make a vault's chart vanish on
+// a busy refresh even though its data exists. Caching non-empty results keeps
+// repeat/parallel views off the wire so charts render reliably. Only successful
+// (non-empty) series are cached, so a transient empty result is retried next time
+// rather than pinned for the whole TTL.
+const seriesCache = new Map<string, { points: MorphoSeriesPoint[]; ts: number }>();
+const SERIES_TTL = 30 * 60 * 1000;
+
 // Daily USD share-price history for a Morpho vault, straight from the Morpho API.
 // This is real observed data — it lets the charts and trailing-window APY work
 // for Morpho vaults even when GoldRush has no pricing for the share token.
@@ -381,6 +391,10 @@ export async function getMorphoSharePriceSeries(
 ): Promise<MorphoSeriesPoint[]> {
   const chainId = CHAIN_ID_BY_CHAIN[chain];
   if (!chainId || !/^0x[0-9a-fA-F]{40}$/.test(address)) return [];
+
+  const cacheKey = `morpho:${chainId}:${address.toLowerCase()}:${days}`;
+  const cached = seriesCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < SERIES_TTL) return cached.points;
 
   const startTimestamp = Math.floor(Date.now() / 1000) - days * 86400;
   const query = `{
@@ -404,10 +418,95 @@ export async function getMorphoSharePriceSeries(
       data?: { vaultByAddress?: { historicalState?: { sharePriceUsd?: { x: number; y: number }[] } } };
     };
     const points = json.data?.vaultByAddress?.historicalState?.sharePriceUsd ?? [];
-    return points
+    const series = points
       .filter((p) => p && p.y > 0 && Number.isFinite(p.x))
       .map((p) => ({ date: new Date(p.x * 1000).toISOString().slice(0, 10), price: p.y }))
       .sort((a, b) => a.date.localeCompare(b.date));
+    if (series.length >= 2) seriesCache.set(cacheKey, { points: series, ts: Date.now() });
+    return series;
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ─── Yearn historical share-price series (for charts) ─────────────────────────
+
+// Yearn's own indexer (Kong) exposes each vault's daily price-per-share — the
+// real, observed yield curve. GoldRush frequently has no market price for a
+// Yearn share token (yvUSDC etc.), which is why those vaults' charts came up
+// empty; Kong fills that gap the same way the Morpho API does for Morpho vaults.
+//
+// PPS is denominated in the underlying asset, so we convert it to USD by
+// multiplying by the underlying's live USD price history (from GoldRush) when
+// that's available. When it isn't (e.g. no GoldRush key, or an unpriced asset)
+// we return the raw PPS — still real data, just asset-denominated. Returns []
+// for non-Yearn addresses so callers fall back to GoldRush.
+export async function getYearnSharePriceSeries(
+  chain: SupportedChain,
+  address: string,
+  days = 90
+): Promise<MorphoSeriesPoint[]> {
+  const chainId = CHAIN_ID_BY_CHAIN[chain];
+  if (!chainId || !/^0x[0-9a-fA-F]{40}$/.test(address)) return [];
+
+  const cacheKey = `yearn:${chainId}:${address.toLowerCase()}:${days}`;
+  const cached = seriesCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < SERIES_TTL) return cached.points;
+
+  const startTimestamp = Math.floor(Date.now() / 1000) - days * 86400;
+  const addr = address.toLowerCase();
+  const query = `{
+    vault(chainId: ${chainId}, address: "${addr}") { asset { address } }
+    timeseries(chainId: ${chainId}, address: "${addr}", label: "pps", component: "humanized", timestamp: ${startTimestamp}) { time value }
+  }`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const resp = await fetch("https://kong.yearn.farm/api/gql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+      signal: controller.signal,
+    });
+    const json = (await resp.json()) as {
+      data?: {
+        vault?: { asset?: { address?: string } | null } | null;
+        timeseries?: { time: string; value: number }[];
+      };
+    };
+
+    const raw = (json.data?.timeseries ?? [])
+      .map((p) => ({ date: new Date(Number(p.time) * 1000).toISOString().slice(0, 10), pps: p.value }))
+      .filter((p) => Number.isFinite(p.pps) && p.pps > 0 && /^\d{4}-\d{2}-\d{2}$/.test(p.date))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (raw.length < 2) return [];
+
+    // Convert PPS → USD using the underlying asset's daily USD price. Carry the
+    // last known price forward for any gap so the curve stays continuous.
+    const assetAddr = json.data?.vault?.asset?.address;
+    const usdByDate = new Map<string, number>();
+    if (assetAddr) {
+      for (const p of await getPriceSeries(chain, assetAddr, days)) usdByDate.set(p.date, p.price);
+    }
+
+    let series: MorphoSeriesPoint[];
+    if (usdByDate.size >= 2) {
+      let lastUsd: number | null = null;
+      series = raw.map((p) => {
+        const u = usdByDate.get(p.date);
+        if (u != null) lastUsd = u;
+        return { date: p.date, price: lastUsd != null ? p.pps * lastUsd : p.pps };
+      });
+    } else {
+      // No USD pricing available — return the raw (asset-denominated) PPS curve.
+      series = raw.map((p) => ({ date: p.date, price: p.pps }));
+    }
+
+    if (series.length >= 2) seriesCache.set(cacheKey, { points: series, ts: Date.now() });
+    return series;
   } catch {
     return [];
   } finally {

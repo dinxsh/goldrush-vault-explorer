@@ -97,7 +97,7 @@ export default function SubVaultRow({ node, vaultTotal }: Props) {
                     className="py-2.5 pr-3"
                     style={{
                         paddingLeft: indentLeft,
-                        boxShadow: node.depth > 0 ? "inset 3px 0 0 rgba(249,115,22,0.25)" : undefined,
+                        boxShadow: node.depth > 0 ? "inset 3px 0 0 rgba(92,225,127,0.25)" : undefined,
                     }}
                 >
                     <div className="flex items-center gap-2">

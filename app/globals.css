@@ -4,15 +4,17 @@
     --bg: #0f0f0f;
     --card: #1a1a1a;
     --border: #2a2a2a;
-    --accent: #f97316;
+    /* Single app accent — GoldRush brand green. Everything interactive/branded
+       (buttons, links, active states, APY, badges) reads from this so the theme
+       stays consistent. Semantic colors below (risk, tx direction) are separate. */
+    --accent: #5ce17f;
     --text-primary: #f5f5f5;
     --text-secondary: #888;
     --positive: #22c55e;
     --negative: #ef4444;
 
-    /* GoldRush brand green — accent for the vault filters, charts and APY-window
-       analytics. Kept distinct from the legacy orange --accent so the rest of the
-       app is untouched while these surfaces read as on-brand GoldRush. */
+    /* GoldRush brand green scale — same hue as --accent, used for charts, filters
+       and APY-window analytics (dim/line variants for fills and gridlines). */
     --gr-green: #5ce17f;
     --gr-green-deep: #2faf55;
     --gr-green-dim: rgba(92, 225, 127, 0.12);

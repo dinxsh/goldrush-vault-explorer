@@ -200,7 +200,7 @@ export default function OpportunityDetailPage() {
         <div className="max-w-6xl mx-auto">
           {/* Badges */}
           <div className="flex gap-2 mb-3 flex-wrap">
-            <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "rgba(249,115,22,0.12)", color: "var(--accent)" }}>
+            <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "var(--gr-green-dim)", color: "var(--accent)" }}>
               {opportunity.protocol}
             </span>
             <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "rgba(100,116,139,0.12)", color: "#64748b" }}>

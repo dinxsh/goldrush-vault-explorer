@@ -35,7 +35,7 @@ export default function OpportunityCard({ opportunity }: OpportunityCardProps) {
           </p>
         </div>
         <div className="shrink-0 flex gap-1.5">
-          <span className="rounded px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap" style={{ background: "rgba(249,115,22,0.12)", color: "var(--accent)" }}>
+          <span className="rounded px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap" style={{ background: "var(--gr-green-dim)", color: "var(--accent)" }}>
             {opportunity.protocol}
           </span>
           <span className="rounded px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap" style={{ background: riskColor, color: riskTextColor }}>

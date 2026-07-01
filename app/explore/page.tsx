@@ -159,12 +159,12 @@ export default function HomePage() {
                     onClick={() => router.push("/")}
                     className="w-full rounded border px-4 py-3 text-sm font-semibold transition-colors"
                     style={{
-                        background: "rgba(249,115,22,0.08)",
+                        background: "rgba(92,225,127,0.08)",
                         borderColor: "var(--accent)",
                         color: "var(--accent)",
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(249,115,22,0.16)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(249,115,22,0.08)")}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(92,225,127,0.16)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(92,225,127,0.08)")}
                 >
                     Browse Earn Vaults →
                 </button>
@@ -197,7 +197,7 @@ export default function HomePage() {
                                     </span>
                                     <span
                                         className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                                        style={{ background: "rgba(249,115,22,0.12)", color: "var(--accent)" }}
+                                        style={{ background: "var(--gr-green-dim)", color: "var(--accent)" }}
                                     >
                                         {preset.protocol}
                                     </span>

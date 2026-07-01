@@ -5,7 +5,7 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
   "steakhouse-usdc-eth": {
     slug: "steakhouse-usdc-eth",
     name: "Steakhouse USDC",
-    description: "MetaMorpho USDC vault by Steakhouse Finance — allocates to Morpho Blue markets",
+    description: "MetaMorpho USDC vault by Steakhouse Finance, allocates to Morpho Blue markets",
     vaultAddress: "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
     chain: "eth-mainnet",
     protocol: "Morpho",
@@ -19,7 +19,7 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
   "steakhouse-usdt-eth": {
     slug: "steakhouse-usdt-eth",
     name: "Steakhouse USDT",
-    description: "MetaMorpho USDT vault by Steakhouse Finance — rich Deposit/Withdraw tx history",
+    description: "MetaMorpho USDT vault by Steakhouse Finance, rich Deposit/Withdraw tx history",
     vaultAddress: "0xbEef047a543E45807105E51A8BBEFCc5950fcfBa",
     chain: "eth-mainnet",
     protocol: "Morpho",
@@ -33,7 +33,7 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
   "gauntlet-weth-core-eth": {
     slug: "gauntlet-weth-core-eth",
     name: "Gauntlet WETH Core",
-    description: "MetaMorpho WETH vault by Gauntlet — supplies to LRT-collateralised Morpho Blue markets",
+    description: "MetaMorpho WETH vault by Gauntlet, supplies to LRT-collateralised Morpho Blue markets",
     vaultAddress: "0x4881Ef0BF6d2365D3dd6499ccd7532bcdBCE0658",
     chain: "eth-mainnet",
     protocol: "Morpho",
@@ -47,7 +47,7 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
   "gauntlet-usdc-core-eth": {
     slug: "gauntlet-usdc-core-eth",
     name: "Gauntlet USDC Core",
-    description: "MetaMorpho USDC vault by Gauntlet — risk-optimised allocation across Morpho Blue",
+    description: "MetaMorpho USDC vault by Gauntlet, risk-optimised allocation across Morpho Blue",
     vaultAddress: "0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458",
     chain: "eth-mainnet",
     protocol: "Morpho",
@@ -61,7 +61,7 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
   "re7-weth-eth": {
     slug: "re7-weth-eth",
     name: "Re7 WETH",
-    description: "MetaMorpho WETH vault by Re7 Capital — focused on ETH-denominated yield strategies",
+    description: "MetaMorpho WETH vault by Re7 Capital, focused on ETH-denominated yield strategies",
     vaultAddress: "0x78Fc2c2eD1A4cDb5402365934aE5648aDAd094d0",
     chain: "eth-mainnet",
     protocol: "Morpho",
@@ -76,7 +76,7 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
   "aave-usdc-eth": {
     slug: "aave-usdc-eth",
     name: "Aave USDC",
-    description: "Aave lending protocol USDC — earn interest from lending to traders",
+    description: "Aave lending protocol USDC, earn interest from lending to traders",
     vaultAddress: "0xA2F987D4d84019e3fB4e24a58B0D9eF51B8d39ed",
     chain: "eth-mainnet",
     protocol: "Aave",
@@ -91,7 +91,7 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
   "curve-3crv-eth": {
     slug: "curve-3crv-eth",
     name: "Curve 3CRV",
-    description: "Curve 3pool LP — earn fees from stablecoin swaps",
+    description: "Curve 3pool LP, earn fees from stablecoin swaps",
     vaultAddress: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
     chain: "eth-mainnet",
     protocol: "Curve",
@@ -121,7 +121,7 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
   "aave-usdc-polygon": {
     slug: "aave-usdc-polygon",
     name: "Aave USDC (Polygon)",
-    description: "Aave on Polygon — lower gas fees, faster transactions",
+    description: "Aave on Polygon, lower gas fees, faster transactions",
     vaultAddress: "0x625E7708f30cA6A280b064cb7e54f1C32FB13df0",
     chain: "matic-mainnet",
     protocol: "Aave",
@@ -136,7 +136,7 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
   "compound-usdc-eth": {
     slug: "compound-usdc-eth",
     name: "Compound USDC",
-    description: "Compound lending protocol — earn COMP rewards + interest",
+    description: "Compound lending protocol, earn COMP rewards + interest",
     vaultAddress: "0x39AA39c021dfbaE8fac545936693ac917d5E7563",
     chain: "eth-mainnet",
     protocol: "Compound",
@@ -151,7 +151,7 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
   "yearn-usdc-eth": {
     slug: "yearn-usdc-eth",
     name: "Yearn USDC",
-    description: "Yearn strategy vault — automated yield optimization",
+    description: "Yearn strategy vault, automated yield optimization",
     vaultAddress: "0xa354F35829Ae477e64B92D4e7addBE43b953FFC2",
     chain: "eth-mainnet",
     protocol: "Yearn",
@@ -166,7 +166,7 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
   "lido-eth": {
     slug: "lido-eth",
     name: "Lido stETH",
-    description: "Liquid staking for Ethereum — stake without locking 32 ETH",
+    description: "Liquid staking for Ethereum, stake without locking 32 ETH",
     vaultAddress: "0xae7ab96520DE3A18E5e111B5EaAc2D6F0b82F2fC",
     chain: "eth-mainnet",
     protocol: "Lido",
@@ -181,7 +181,7 @@ export const OPPORTUNITIES: Record<string, Opportunity> = {
   "rocketpool-eth": {
     slug: "rocketpool-eth",
     name: "Rocket Pool rETH",
-    description: "Decentralized liquid staking — run your own node",
+    description: "Decentralized liquid staking, run your own node",
     vaultAddress: "0xae78eb9030eb3a280d256a300ee4461551d50328",
     chain: "eth-mainnet",
     protocol: "Rocket Pool",

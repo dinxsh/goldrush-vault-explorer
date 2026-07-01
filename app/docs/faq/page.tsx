@@ -13,7 +13,7 @@ export default function FAQPage() {
             How do I start earning?
           </h3>
           <p className="mt-2" style={{ color: "var(--text-secondary)" }}>
-            Connect your wallet, browse opportunities, and deposit. Yield starts accruing immediately. No lock-ups — withdraw anytime.
+            Connect your wallet, browse opportunities, and deposit. Yield starts accruing immediately. No lock-ups - withdraw anytime.
           </p>
         </section>
 
@@ -31,7 +31,7 @@ export default function FAQPage() {
             What's the difference between APY and APR?
           </h3>
           <p className="mt-2" style={{ color: "var(--text-secondary)" }}>
-            <strong>APR</strong> is simple interest (no compounding). <strong>APY</strong> accounts for compounding, so your actual return is higher. We display APY — your real yield.
+            <strong>APR</strong> is simple interest (no compounding). <strong>APY</strong> accounts for compounding, so your actual return is higher. We display APY - your real yield.
           </p>
         </section>
 
@@ -76,7 +76,7 @@ export default function FAQPage() {
             Can yields go negative?
           </h3>
           <p className="mt-2" style={{ color: "var(--text-secondary)" }}>
-            In lending protocols, no — you earn interest. In staking, validator penalties could reduce your balance. In AMM pools, impermanent loss could reduce your share value. Always review risk factors.
+            In lending protocols, no - you earn interest. In staking, validator penalties could reduce your balance. In AMM pools, impermanent loss could reduce your share value. Always review risk factors.
           </p>
         </section>
 
@@ -94,7 +94,7 @@ export default function FAQPage() {
             Do I need KYC to use GoldRush?
           </h3>
           <p className="mt-2" style={{ color: "var(--text-secondary)" }}>
-            No. GoldRush is a discovery tool — you interact directly with protocols via your wallet. No registration, KYC, or central platform. Complete sovereignty.
+            No. GoldRush is a discovery tool - you interact directly with protocols via your wallet. No registration, KYC, or central platform. Complete sovereignty.
           </p>
         </section>
 

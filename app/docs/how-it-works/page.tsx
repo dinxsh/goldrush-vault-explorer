@@ -37,10 +37,10 @@ export default function HowItWorksPage() {
             Why Use Vaults?
           </h2>
           <ul className="mt-3 space-y-2 ml-4" style={{ color: "var(--text-secondary)" }}>
-            <li>• <strong>Automation</strong> — Earn on the best opportunities without constant monitoring</li>
-            <li>• <strong>Diversification</strong> — Spread risk across multiple protocols</li>
-            <li>• <strong>Gas Efficiency</strong> — Batch deposits to save on transaction costs</li>
-            <li>• <strong>Rebalancing</strong> — Automatically move capital to maintain target allocation</li>
+            <li>• <strong>Automation</strong> - Earn on the best opportunities without constant monitoring</li>
+            <li>• <strong>Diversification</strong> - Spread risk across multiple protocols</li>
+            <li>• <strong>Gas Efficiency</strong> - Batch deposits to save on transaction costs</li>
+            <li>• <strong>Rebalancing</strong> - Automatically move capital to maintain target allocation</li>
           </ul>
         </section>
 

@@ -19,10 +19,10 @@ export default function SecurityPage() {
             All protocols in GoldRush have been audited by reputable firms:
           </p>
           <ul className="mt-2 space-y-1 ml-4" style={{ color: "var(--text-secondary)" }}>
-            <li>• <strong>OpenZeppelin</strong> — Industry-leading security audits</li>
-            <li>• <strong>Trail of Bits</strong> — Advanced smart contract analysis</li>
-            <li>• <strong>Quantstamp</strong> — Independent security assessments</li>
-            <li>• <strong>CertiK</strong> — Formal verification specialists</li>
+            <li>• <strong>OpenZeppelin</strong> - Industry-leading security audits</li>
+            <li>• <strong>Trail of Bits</strong> - Advanced smart contract analysis</li>
+            <li>• <strong>Quantstamp</strong> - Independent security assessments</li>
+            <li>• <strong>CertiK</strong> - Formal verification specialists</li>
           </ul>
         </section>
 
@@ -34,11 +34,11 @@ export default function SecurityPage() {
             We evaluate each protocol on:
           </p>
           <ul className="mt-2 space-y-1 ml-4" style={{ color: "var(--text-secondary)" }}>
-            <li>• <strong>Code Quality</strong> — Clean, well-documented smart contracts</li>
-            <li>• <strong>Battle-testing</strong> — Minimum 1 year on mainnet</li>
-            <li>• <strong>TVL & Adoption</strong> — Significant locked value proves stability</li>
-            <li>• <strong>Team Reputation</strong> — Experienced, transparent developers</li>
-            <li>• <strong>Governance</strong> — Community-aligned decision-making</li>
+            <li>• <strong>Code Quality</strong> - Clean, well-documented smart contracts</li>
+            <li>• <strong>Battle-testing</strong> - Minimum 1 year on mainnet</li>
+            <li>• <strong>TVL & Adoption</strong> - Significant locked value proves stability</li>
+            <li>• <strong>Team Reputation</strong> - Experienced, transparent developers</li>
+            <li>• <strong>Governance</strong> - Community-aligned decision-making</li>
           </ul>
         </section>
 
@@ -50,10 +50,10 @@ export default function SecurityPage() {
             Even audited protocols carry risks. We're transparent about:
           </p>
           <ul className="mt-2 space-y-1 ml-4" style={{ color: "var(--text-secondary)" }}>
-            <li>• <strong>Smart Contract Risk</strong> — Potential bugs or exploits</li>
-            <li>• <strong>Oracle Risk</strong> — Price feed failures could trigger liquidations</li>
-            <li>• <strong>Market Risk</strong> — Volatility impacts collateral values</li>
-            <li>• <strong>Operational Risk</strong> — Team decisions or governance attacks</li>
+            <li>• <strong>Smart Contract Risk</strong> - Potential bugs or exploits</li>
+            <li>• <strong>Oracle Risk</strong> - Price feed failures could trigger liquidations</li>
+            <li>• <strong>Market Risk</strong> - Volatility impacts collateral values</li>
+            <li>• <strong>Operational Risk</strong> - Team decisions or governance attacks</li>
           </ul>
         </section>
 
@@ -62,7 +62,7 @@ export default function SecurityPage() {
             Your Funds
           </h2>
           <p className="mt-3" style={{ color: "var(--text-secondary)" }}>
-            <strong>Self-Custody:</strong> You always control your private keys. GoldRush never holds your funds — we're just a discovery and analytics tool.
+            <strong>Self-Custody:</strong> You always control your private keys. GoldRush never holds your funds - we're just a discovery and analytics tool.
           </p>
           <p className="mt-3" style={{ color: "var(--text-secondary)" }}>
             <strong>Approval Security:</strong> Before depositing, you approve only the amount and vault you choose. Revoke approval anytime in your wallet.
@@ -74,13 +74,13 @@ export default function SecurityPage() {
             What We Don't Do
           </h2>
           <p className="mt-3" style={{ color: "var(--text-secondary)" }}>
-            ✗ We don't guarantee returns — yields vary based on market conditions
+            ✗ We don't guarantee returns - yields vary based on market conditions
           </p>
           <p className="mt-3" style={{ color: "var(--text-secondary)" }}>
-            ✗ We don't conduct our own audits — we curate audited protocols
+            ✗ We don't conduct our own audits - we curate audited protocols
           </p>
           <p className="mt-3" style={{ color: "var(--text-secondary)" }}>
-            ✗ We don't hold or manage your assets — you do
+            ✗ We don't hold or manage your assets - you do
           </p>
         </section>
       </div>

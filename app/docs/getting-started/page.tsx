@@ -28,10 +28,10 @@ export default function GettingStartedPage() {
             Navigate to the Earn section and explore available vaults. Filter by:
           </p>
           <ul className="mt-2 space-y-1 ml-4" style={{ color: "var(--text-secondary)" }}>
-            <li>• <strong>Chain</strong> — Select your preferred blockchain</li>
-            <li>• <strong>Protocol</strong> — Choose lending platforms or strategies</li>
-            <li>• <strong>Risk Level</strong> — Match your risk tolerance</li>
-            <li>• <strong>APY</strong> — Sort by yield to find high performers</li>
+            <li>• <strong>Chain</strong> - Select your preferred blockchain</li>
+            <li>• <strong>Protocol</strong> - Choose lending platforms or strategies</li>
+            <li>• <strong>Risk Level</strong> - Match your risk tolerance</li>
+            <li>• <strong>APY</strong> - Sort by yield to find high performers</li>
           </ul>
         </section>
 
@@ -70,7 +70,7 @@ export default function GettingStartedPage() {
             5. Manage Your Position
           </h2>
           <p className="mt-3" style={{ color: "var(--text-secondary)" }}>
-            Track your deposits, earned yield, and performance. Withdraw anytime — no lock-up periods.
+            Track your deposits, earned yield, and performance. Withdraw anytime - no lock-up periods.
           </p>
         </section>
       </div>

@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
     if (minApy !== undefined && (isNaN(minApy) || minApy < 0 || minApy > 1)) {
       return NextResponse.json(
         {
-          error: "Invalid minApy parameter — must be between 0 and 1",
+          error: "Invalid minApy parameter - must be between 0 and 1",
           errorCode: "INVALID_MIN_APY",
           timestamp: new Date().toISOString(),
         },
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
     if (maxApy !== undefined && (isNaN(maxApy) || maxApy < 0 || maxApy > 1)) {
       return NextResponse.json(
         {
-          error: "Invalid maxApy parameter — must be between 0 and 1",
+          error: "Invalid maxApy parameter - must be between 0 and 1",
           errorCode: "INVALID_MAX_APY",
           timestamp: new Date().toISOString(),
         },
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
     if (minApy !== undefined && maxApy !== undefined && minApy > maxApy) {
       return NextResponse.json(
         {
-          error: "Invalid APY range — minApy cannot be greater than maxApy",
+          error: "Invalid APY range - minApy cannot be greater than maxApy",
           errorCode: "INVALID_APY_RANGE",
           timestamp: new Date().toISOString(),
         },
@@ -119,7 +119,7 @@ export async function GET(req: NextRequest) {
     if (paginatedOpportunities.length === 0 && page > 1) {
       return NextResponse.json(
         {
-          error: `Page ${page} is out of bounds — only ${Math.ceil(total / limit)} pages available`,
+          error: `Page ${page} is out of bounds - only ${Math.ceil(total / limit)} pages available`,
           errorCode: "PAGE_OUT_OF_BOUNDS",
           timestamp: new Date().toISOString(),
         },

@@ -19,9 +19,9 @@ export default function StrategiesPage() {
             Choose blue-chip protocols with extensive audit histories. Focus on:
           </p>
           <ul className="mt-2 space-y-1 ml-4" style={{ color: "var(--text-secondary)" }}>
-            <li>• <strong>Aave</strong> — Industry standard lending protocol</li>
-            <li>• <strong>Curve</strong> — Stable and battle-tested AMM</li>
-            <li>• <strong>Morpho</strong> — Optimized lending with strong risk controls</li>
+            <li>• <strong>Aave</strong> - Industry standard lending protocol</li>
+            <li>• <strong>Curve</strong> - Stable and battle-tested AMM</li>
+            <li>• <strong>Morpho</strong> - Optimized lending with strong risk controls</li>
           </ul>
           <p className="mt-3" style={{ color: "var(--text-secondary)" }}>
             <strong>Expected APY:</strong> 3–5%
@@ -36,9 +36,9 @@ export default function StrategiesPage() {
             Diversify across mid-tier protocols and strategies. Consider:
           </p>
           <ul className="mt-2 space-y-1 ml-4" style={{ color: "var(--text-secondary)" }}>
-            <li>• <strong>Morpho MetaMorpho</strong> — Active vault managers optimizing allocation</li>
-            <li>• <strong>Yearn Strategies</strong> — Professional yield optimization</li>
-            <li>• <strong>Compound</strong> — Governance-token rewards</li>
+            <li>• <strong>Morpho MetaMorpho</strong> - Active vault managers optimizing allocation</li>
+            <li>• <strong>Yearn Strategies</strong> - Professional yield optimization</li>
+            <li>• <strong>Compound</strong> - Governance-token rewards</li>
           </ul>
           <p className="mt-3" style={{ color: "var(--text-secondary)" }}>
             <strong>Expected APY:</strong> 5–10%
@@ -53,9 +53,9 @@ export default function StrategiesPage() {
             Target emerging protocols and new opportunities with higher risk. Options:
           </p>
           <ul className="mt-2 space-y-1 ml-4" style={{ color: "var(--text-secondary)" }}>
-            <li>• <strong>Emerging Morpho Vaults</strong> — New strategies with high APY</li>
-            <li>• <strong>Multi-chain Arbitrage</strong> — Exploit cross-chain yield gaps</li>
-            <li>• <strong>New Protocol Incentives</strong> — Bootstrap rewards programs</li>
+            <li>• <strong>Emerging Morpho Vaults</strong> - New strategies with high APY</li>
+            <li>• <strong>Multi-chain Arbitrage</strong> - Exploit cross-chain yield gaps</li>
+            <li>• <strong>New Protocol Incentives</strong> - Bootstrap rewards programs</li>
           </ul>
           <p className="mt-3" style={{ color: "var(--text-secondary)" }}>
             <strong>Expected APY:</strong> 10%+
@@ -70,9 +70,9 @@ export default function StrategiesPage() {
             Yield varies significantly across chains due to liquidity and demand. Monitor rates on:
           </p>
           <ul className="mt-2 space-y-1 ml-4" style={{ color: "var(--text-secondary)" }}>
-            <li>• <strong>Ethereum</strong> — Largest TVL, most stable rates</li>
-            <li>• <strong>Base</strong> — Emerging, often higher APY</li>
-            <li>• <strong>Polygon</strong> — Lower gas, growing ecosystem</li>
+            <li>• <strong>Ethereum</strong> - Largest TVL, most stable rates</li>
+            <li>• <strong>Base</strong> - Emerging, often higher APY</li>
+            <li>• <strong>Polygon</strong> - Lower gas, growing ecosystem</li>
           </ul>
           <p className="mt-3" style={{ color: "var(--text-secondary)" }}>
             Deploy capital where yields are highest, adjusting as opportunities shift.

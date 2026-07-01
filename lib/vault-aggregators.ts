@@ -2,7 +2,7 @@
 //
 // Enumerates the full vault universe from each protocol's public API so the
 // explorer competes with vaults.fyi on breadth. Every APY/TVL here is live from
-// the source protocol (Morpho GraphQL, Yearn ydaemon) — no synthetic data, in
+// the source protocol (Morpho GraphQL, Yearn ydaemon), no synthetic data, in
 // line with the strict live-only policy. When a source is unreachable we simply
 // return fewer vaults; we never fabricate.
 //
@@ -47,7 +47,7 @@ const CHAIN_ID_BY_CHAIN: Partial<Record<SupportedChain, number>> = Object.fromEn
   Object.entries(CHAIN_BY_ID).map(([id, chain]) => [chain, Number(id)])
 ) as Partial<Record<SupportedChain, number>>;
 
-// Only surface vaults with at least this much TVL — filters out the long tail of
+// Only surface vaults with at least this much TVL, filters out the long tail of
 // dust / test / spam vaults the APIs also return.
 const MIN_TVL_USD = 100_000;
 
@@ -114,7 +114,7 @@ function toOpportunity(args: {
     asset,
     riskLevel: inferRisk(protocol, tvl),
     riskFactors: [
-      "Auto-listed vault — risk band is inferred from protocol and TVL, not a manual review.",
+      "Auto-listed vault, risk band is inferred from protocol and TVL, not a manual review.",
       "Always verify the strategy and audits on the protocol's own site before depositing.",
     ],
     highlights: [`${asset} vault on ${protocol}`, "Live on-chain metrics"],
@@ -256,13 +256,13 @@ export async function getAggregatedVaults(): Promise<Opportunity[]> {
     vaults.push(v);
   }
 
-  // Only overwrite the cache when we actually got data — a transient API outage
+  // Only overwrite the cache when we actually got data, a transient API outage
   // shouldn't blow away a good cache and leave the list empty.
   if (vaults.length > 0 || !cache) cache = { vaults, ts: Date.now() };
   return cache!.vaults;
 }
 
-// Resolve an aggregated vault by slug — from cache, falling back to a minimal
+// Resolve an aggregated vault by slug, from cache, falling back to a minimal
 // record reconstructed from the self-describing slug (so detail pages work even
 // on a cold cache).
 export async function findAggregatedBySlug(slug: string): Promise<Opportunity | null> {
@@ -282,7 +282,7 @@ export async function findAggregatedBySlug(slug: string): Promise<Opportunity | 
       : await fetchSingleMorphoVault(parsed.address, parsed.chain);
   if (single) return single;
 
-  // Truly unresolvable — apy null signals "no live data" so the detail route
+  // Truly unresolvable, apy null signals "no live data" so the detail route
   // surfaces an honest error rather than a fake 0%.
   const protocolName = parsed.protocol.charAt(0).toUpperCase() + parsed.protocol.slice(1);
   return {
@@ -371,7 +371,7 @@ interface MorphoSeriesPoint {
 }
 
 // Daily data changes at most once a day, and the source APIs (Morpho, Kong)
-// throttle under concurrent load — which used to make a vault's chart vanish on
+// throttle under concurrent load, which used to make a vault's chart vanish on
 // a busy refresh even though its data exists. Caching non-empty results keeps
 // repeat/parallel views off the wire so charts render reliably. Only successful
 // (non-empty) series are cached, so a transient empty result is retried next time
@@ -380,7 +380,7 @@ const seriesCache = new Map<string, { points: MorphoSeriesPoint[]; ts: number }>
 const SERIES_TTL = 30 * 60 * 1000;
 
 // Daily USD share-price history for a Morpho vault, straight from the Morpho API.
-// This is real observed data — it lets the charts and trailing-window APY work
+// This is real observed data, it lets the charts and trailing-window APY work
 // for Morpho vaults even when GoldRush has no pricing for the share token.
 // Returns [] for non-Morpho addresses (the API returns null), so callers can
 // fall back to GoldRush pricing.
@@ -433,7 +433,7 @@ export async function getMorphoSharePriceSeries(
 
 // ─── Yearn historical share-price series (for charts) ─────────────────────────
 
-// Yearn's own indexer (Kong) exposes each vault's daily price-per-share — the
+// Yearn's own indexer (Kong) exposes each vault's daily price-per-share, the
 // real, observed yield curve. GoldRush frequently has no market price for a
 // Yearn share token (yvUSDC etc.), which is why those vaults' charts came up
 // empty; Kong fills that gap the same way the Morpho API does for Morpho vaults.
@@ -441,7 +441,7 @@ export async function getMorphoSharePriceSeries(
 // PPS is denominated in the underlying asset, so we convert it to USD by
 // multiplying by the underlying's live USD price history (from GoldRush) when
 // that's available. When it isn't (e.g. no GoldRush key, or an unpriced asset)
-// we return the raw PPS — still real data, just asset-denominated. Returns []
+// we return the raw PPS, still real data, just asset-denominated. Returns []
 // for non-Yearn addresses so callers fall back to GoldRush.
 export async function getYearnSharePriceSeries(
   chain: SupportedChain,
@@ -501,7 +501,7 @@ export async function getYearnSharePriceSeries(
         return { date: p.date, price: lastUsd != null ? p.pps * lastUsd : p.pps };
       });
     } else {
-      // No USD pricing available — return the raw (asset-denominated) PPS curve.
+      // No USD pricing available, return the raw (asset-denominated) PPS curve.
       series = raw.map((p) => ({ date: p.date, price: p.pps }));
     }
 

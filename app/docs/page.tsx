@@ -25,11 +25,11 @@ export default function DocsPage() {
             Key Features
           </h2>
           <ul className="mt-3 space-y-2" style={{ color: "var(--text-secondary)" }}>
-            <li>✓ <strong>Multi-Chain</strong> — Access vaults on Ethereum, Base, Polygon, Arbitrum, Optimism, and more</li>
-            <li>✓ <strong>Verified Protocols</strong> — Only audited, battle-tested strategies</li>
-            <li>✓ <strong>Real-time Yields</strong> — Live APY data updated every block</li>
-            <li>✓ <strong>Risk Analysis</strong> — Transparent risk factors for each vault</li>
-            <li>✓ <strong>Cross-chain Comparison</strong> — Compare yields across all chains in one place</li>
+            <li>✓ <strong>Multi-Chain</strong> - Access vaults on Ethereum, Base, Polygon, Arbitrum, Optimism, and more</li>
+            <li>✓ <strong>Verified Protocols</strong> - Only audited, battle-tested strategies</li>
+            <li>✓ <strong>Real-time Yields</strong> - Live APY data updated every block</li>
+            <li>✓ <strong>Risk Analysis</strong> - Transparent risk factors for each vault</li>
+            <li>✓ <strong>Cross-chain Comparison</strong> - Compare yields across all chains in one place</li>
           </ul>
         </div>
 

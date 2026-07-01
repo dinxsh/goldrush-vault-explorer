@@ -147,15 +147,14 @@ export default function EarnPage() {
         />
 
         <div className="relative max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8 sm:py-20">
-          {/* logo + eyebrow */}
-          <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/goldrush-logo.svg" alt="GoldRush" className="h-5 w-auto" />
-            <span
-              className="rounded-full border px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em]"
-              style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
-            >
-              Vault Explorer
+          {/* live kicker (logo already lives in the navbar) */}
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: "var(--gr-green)" }} />
+              <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: "var(--gr-green)" }} />
+            </span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.22em]" style={{ color: "var(--text-secondary)" }}>
+              Live on-chain yield
             </span>
           </div>
 
@@ -175,8 +174,8 @@ export default function EarnPage() {
           </h1>
 
           <p className="mt-5 max-w-xl text-base leading-relaxed sm:text-lg" style={{ color: "var(--text-secondary)" }}>
-            Live APY, TVL and withdrawable liquidity across every supported chain and protocol — decomposed to the
-            underlying positions, sourced directly from the blockchain via GoldRush.
+            Compare live APY, TVL and withdrawable liquidity across hundreds of vaults on 6 networks. Then open any one
+            and see exactly where its yield comes from, right down to the on-chain positions.
           </p>
 
           {/* CTAs */}
@@ -197,7 +196,7 @@ export default function EarnPage() {
               className="rounded-lg border px-5 py-3 text-sm font-semibold transition-colors hover:border-[var(--accent)]"
               style={{ borderColor: "var(--border)", color: "var(--text-primary)", background: "var(--surface)" }}
             >
-              Decompose an address
+              Explore any address
             </button>
             <a
               href="https://goldrush.dev"

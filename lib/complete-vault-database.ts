@@ -1,9 +1,9 @@
 import { type Opportunity } from "@/types/opportunity";
 
-// Vault catalog — MetaMorpho (Morpho Blue) vaults only. Every address is verified to
+// Vault catalog, MetaMorpho (Morpho Blue) vaults only. Every address is verified to
 // have deployed contract code on its chain (eth_getCode != "0x") AND its decomposition
 // (lib/vault.ts buildMorphoTree) emits a live root APY, so each entry serves fully live
-// data — TVL and APY both — under the strict live-only policy.
+// data, TVL and APY both, under the strict live-only policy.
 //
 // On 2026-06-26 we removed 30 entries that could not serve live data: 25 with
 // fabricated/placeholder addresses (no on-chain code) and 5 real non-Morpho contracts
@@ -11,12 +11,12 @@ import { type Opportunity } from "@/types/opportunity";
 // Re-add those once the engine learns to compute live APY per protocol.
 
 export const COMPLETE_VAULT_DATABASE: Record<string, Opportunity> = {
-  // ===== MORPHO BLUE — ETHEREUM (live TVL + live APY) =====
+  // ===== MORPHO BLUE, ETHEREUM (live TVL + live APY) =====
   // Steakhouse Vaults
   "morpho-steakhouse-usdc-eth": {
     slug: "morpho-steakhouse-usdc-eth",
     name: "Steakhouse USDC",
-    description: "MetaMorpho USDC vault by Steakhouse Finance — allocates to Morpho Blue markets",
+    description: "MetaMorpho USDC vault by Steakhouse Finance, allocates to Morpho Blue markets",
     vaultAddress: "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
     chain: "eth-mainnet",
     protocol: "Morpho",
@@ -45,7 +45,7 @@ export const COMPLETE_VAULT_DATABASE: Record<string, Opportunity> = {
   "morpho-gauntlet-usdc-eth": {
     slug: "morpho-gauntlet-usdc-eth",
     name: "Gauntlet USDC Core",
-    description: "MetaMorpho USDC vault by Gauntlet — risk-optimised allocation",
+    description: "MetaMorpho USDC vault by Gauntlet, risk-optimised allocation",
     vaultAddress: "0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458",
     chain: "eth-mainnet",
     protocol: "Morpho",
@@ -59,7 +59,7 @@ export const COMPLETE_VAULT_DATABASE: Record<string, Opportunity> = {
   "morpho-gauntlet-weth-eth": {
     slug: "morpho-gauntlet-weth-eth",
     name: "Gauntlet WETH Core",
-    description: "MetaMorpho WETH vault by Gauntlet — LRT-collateralised markets",
+    description: "MetaMorpho WETH vault by Gauntlet, LRT-collateralised markets",
     vaultAddress: "0x4881Ef0BF6d2365D3dd6499ccd7532bcdBCE0658",
     chain: "eth-mainnet",
     protocol: "Morpho",
@@ -86,7 +86,7 @@ export const COMPLETE_VAULT_DATABASE: Record<string, Opportunity> = {
     tvl: 125_000_000,
   },
 
-  // ===== MORPHO BLUE — BASE (live TVL + live APY) =====
+  // ===== MORPHO BLUE, BASE (live TVL + live APY) =====
   "moonwell-usdc-base": {
     slug: "moonwell-usdc-base",
     name: "Moonwell USDC (Base)",

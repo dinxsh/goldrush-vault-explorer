@@ -38,7 +38,7 @@ const SORT_OPTIONS = [
   { value: "name", label: "Name A–Z" },
 ];
 
-const GREEN = "var(--gr-green)";
+const GREEN = "var(--accent)";
 
 export default function OpportunityFilters({
   chain,
@@ -133,7 +133,7 @@ export default function OpportunityFilters({
                 style={{
                   borderColor: on ? GREEN : "var(--border)",
                   color: on ? GREEN : "var(--text-primary)",
-                  background: on ? "var(--gr-green-dim)" : "var(--surface)",
+                  background: on ? "var(--accent-dim)" : "var(--surface)",
                 }}
                 onMouseEnter={(e) => { if (!on) e.currentTarget.style.background = "var(--surface-hover)"; }}
                 onMouseLeave={(e) => { if (!on) e.currentTarget.style.background = "var(--surface)"; }}
@@ -153,7 +153,7 @@ export default function OpportunityFilters({
           style={{
             borderColor: advancedCount ? GREEN : "var(--border)",
             color: advancedCount ? GREEN : "var(--text-primary)",
-            background: advancedCount ? "var(--gr-green-dim)" : "var(--surface)",
+            background: advancedCount ? "var(--accent-dim)" : "var(--surface)",
           }}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -193,7 +193,7 @@ export default function OpportunityFilters({
           >
             <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "var(--border)" }}>
               <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Filters</h3>
-              <button onClick={() => setPanelOpen(false)} className="text-lg leading-none transition-colors hover:text-[var(--gr-green)]" style={{ color: "var(--text-secondary)" }}>✕</button>
+              <button onClick={() => setPanelOpen(false)} className="text-lg leading-none transition-colors hover:text-[var(--accent)]" style={{ color: "var(--text-secondary)" }}>✕</button>
             </div>
 
             <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
@@ -220,7 +220,7 @@ export default function OpportunityFilters({
                         key={r}
                         onClick={() => onFilterChange({ riskLevel: on ? undefined : r })}
                         className="flex-1 rounded-lg border py-2 text-xs font-medium capitalize transition-all"
-                        style={{ borderColor: on ? GREEN : "var(--border)", color: on ? GREEN : "var(--text-primary)", background: on ? "var(--gr-green-dim)" : "var(--surface)" }}
+                        style={{ borderColor: on ? GREEN : "var(--border)", color: on ? GREEN : "var(--text-primary)", background: on ? "var(--accent-dim)" : "var(--surface)" }}
                       >
                         {r}
                       </button>
@@ -258,7 +258,7 @@ export default function OpportunityFilters({
                         key={opt.value}
                         onClick={() => onFilterChange({ sort: opt.value })}
                         className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-sm transition-all"
-                        style={{ borderColor: on ? GREEN : "var(--border)", color: on ? GREEN : "var(--text-primary)", background: on ? "var(--gr-green-dim)" : "var(--surface)" }}
+                        style={{ borderColor: on ? GREEN : "var(--border)", color: on ? GREEN : "var(--text-primary)", background: on ? "var(--accent-dim)" : "var(--surface)" }}
                       >
                         {opt.label}
                         {on && <span>✓</span>}
@@ -289,7 +289,7 @@ function Pill({ label, onClear }: { label: string; onClear: () => void }) {
     <button
       onClick={onClear}
       className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors"
-      style={{ borderColor: "var(--gr-green)", color: "var(--gr-green)", background: "var(--gr-green-dim)" }}
+      style={{ borderColor: "var(--accent)", color: "var(--accent)", background: "var(--accent-dim)" }}
     >
       {label}
       <span style={{ opacity: 0.8 }}>✕</span>

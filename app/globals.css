@@ -4,17 +4,25 @@
     --bg: #0f0f0f;
     --card: #1a1a1a;
     --border: #2a2a2a;
-    /* Single app accent — GoldRush brand green. Everything interactive/branded
-       (buttons, links, active states, APY, badges) reads from this so the theme
-       stays consistent. Semantic colors below (risk, tx direction) are separate. */
-    --accent: #5ce17f;
+
+    /* GoldRush brand accent — pink (#ff4c8b), the primary interactive/branded
+       color: buttons, links, active states, badges, hero. Matches goldrush.dev. */
+    --accent: #ff4c8b;
+    --accent-deep: #ff3d7f;
+    --accent-dim: rgba(255, 76, 139, 0.12);
+    --accent-glow: rgba(255, 76, 139, 0.22);
+    /* GoldRush secondary brand colors — cyan + purple, for the hero
+       gradient/glow and secondary accents. */
+    --brand-cyan: #00d8d5;
+    --brand-purple: #8558d4;
+
     --text-primary: #f5f5f5;
     --text-secondary: #888;
     --positive: #22c55e;
     --negative: #ef4444;
 
-    /* GoldRush brand green scale — same hue as --accent, used for charts, filters
-       and APY-window analytics (dim/line variants for fills and gridlines). */
+    /* Positive-data / yield green — a *semantic* color (APY, chart value line,
+       positive change), kept distinct from the pink brand accent. */
     --gr-green: #5ce17f;
     --gr-green-deep: #2faf55;
     --gr-green-dim: rgba(92, 225, 127, 0.12);
@@ -27,9 +35,9 @@
 body {
     background: var(--bg);
     color: var(--text-primary);
-    font-family: system-ui, sans-serif;
+    font-family: var(--font-sans), system-ui, sans-serif;
 }
 
 .font-mono {
-    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
 }

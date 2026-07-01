@@ -120,49 +120,125 @@ export default function EarnPage() {
 
   return (
     <main className="flex min-h-screen flex-col" style={{ background: "var(--bg)" }}>
-      {/* Header */}
-      <div className="border-b px-4 py-8 sm:px-6 lg:px-8" style={{ borderColor: "var(--border)" }}>
-        <div className="max-w-7xl mx-auto">
-          <span className="inline-block rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
-            // Vaults
-          </span>
-          <h1 className="mt-3 text-4xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
-            <span className="rounded px-1.5" style={{ background: "var(--gr-green)", color: "var(--bg)" }}>Earn</span>{" "}
-            Vaults
+      {/* ── Branded marketing hero ───────────────────────────────── */}
+      <header className="relative overflow-hidden border-b" style={{ borderColor: "var(--border)" }}>
+        {/* pink / cyan / purple gradient glow */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(900px 480px at 80% -14%, rgba(255,76,139,0.20), transparent 60%)," +
+              "radial-gradient(680px 420px at 4% -8%, rgba(0,216,213,0.12), transparent 58%)," +
+              "radial-gradient(820px 520px at 55% 128%, rgba(133,88,212,0.12), transparent 60%)",
+          }}
+        />
+        {/* faint grid, masked toward the top */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.05]"
+          style={{
+            backgroundImage:
+              "linear-gradient(var(--text-secondary) 1px, transparent 1px), linear-gradient(90deg, var(--text-secondary) 1px, transparent 1px)",
+            backgroundSize: "46px 46px",
+            maskImage: "radial-gradient(1100px 460px at 50% 0%, #000 38%, transparent 86%)",
+            WebkitMaskImage: "radial-gradient(1100px 460px at 50% 0%, #000 38%, transparent 86%)",
+          }}
+        />
+
+        <div className="relative max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8 sm:py-20">
+          {/* logo + eyebrow */}
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/goldrush-logo.svg" alt="GoldRush" className="h-5 w-auto" />
+            <span
+              className="rounded-full border px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em]"
+              style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+            >
+              Vault Explorer
+            </span>
+          </div>
+
+          {/* headline */}
+          <h1 className="mt-7 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl" style={{ color: "var(--text-primary)" }}>
+            Every DeFi vault,{" "}
+            <span
+              style={{
+                background: "linear-gradient(100deg, var(--accent), var(--brand-purple) 52%, var(--brand-cyan))",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+              }}
+            >
+              decomposed on-chain.
+            </span>
           </h1>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            Live, decomposed yield opportunities across every supported chain and protocol — sourced directly from the
-            blockchain via GoldRush. Filter, compare, and dive into per-vault performance.
+
+          <p className="mt-5 max-w-xl text-base leading-relaxed sm:text-lg" style={{ color: "var(--text-secondary)" }}>
+            Live APY, TVL and withdrawable liquidity across every supported chain and protocol — decomposed to the
+            underlying positions, sourced directly from the blockchain via GoldRush.
           </p>
 
-          {/* Stats Grid */}
+          {/* CTAs */}
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <a
+              href="#vaults"
+              className="rounded-lg px-5 py-3 text-sm font-semibold transition-opacity hover:opacity-90"
+              style={{
+                background: "linear-gradient(100deg, var(--accent), var(--accent-deep))",
+                color: "#0f0f0f",
+                boxShadow: "0 10px 34px var(--accent-glow)",
+              }}
+            >
+              Browse vaults ↓
+            </a>
+            <button
+              onClick={() => router.push("/explore")}
+              className="rounded-lg border px-5 py-3 text-sm font-semibold transition-colors hover:border-[var(--accent)]"
+              style={{ borderColor: "var(--border)", color: "var(--text-primary)", background: "var(--surface)" }}
+            >
+              Decompose an address
+            </button>
+            <a
+              href="https://goldrush.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium transition-colors hover:text-[var(--accent)]"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Powered by GoldRush →
+            </a>
+          </div>
+
+          {/* live stat highlights */}
           {!loading && opportunities.length > 0 && (() => {
             const oppsWithApy = opportunities.filter((o) => o.apy != null);
             const oppsWithTvl = opportunities.filter((o) => o.tvl != null);
             if (oppsWithApy.length === 0 || oppsWithTvl.length === 0) return null;
 
-            const stats = [
-              { label: "Eligible Vaults", value: (pagination?.total ?? opportunities.length).toLocaleString() },
-              { label: "Best APY", value: `${(Math.max(...oppsWithApy.map((o) => o.apy as number)) * 100).toFixed(2)}%` },
+            const stats: { label: string; value: string; accent?: string }[] = [
+              { label: "Vaults tracked", value: (pagination?.total ?? opportunities.length).toLocaleString() },
+              { label: "Best APY", value: `${(Math.max(...oppsWithApy.map((o) => o.apy as number)) * 100).toFixed(2)}%`, accent: "var(--gr-green)" },
               { label: "Total TVL", value: `$${(oppsWithTvl.reduce((sum: number, o) => sum + (o.tvl as number), 0) / 1_000_000_000).toFixed(1)}B` },
+              { label: "Networks", value: "6" },
             ];
 
             return (
-              <div className="mt-6 grid grid-cols-1 gap-px overflow-hidden rounded-xl border sm:grid-cols-3" style={{ borderColor: "var(--border)", background: "var(--border)" }}>
+              <div className="mt-12 grid max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-2xl border sm:grid-cols-4" style={{ borderColor: "var(--border)", background: "var(--border)" }}>
                 {stats.map((s) => (
-                  <div key={s.label} className="p-5" style={{ background: "var(--card)" }}>
-                    <div className="text-xs uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>{s.label}</div>
-                    <div className="mt-1 text-2xl font-bold" style={{ color: "var(--gr-green)" }}>{s.value}</div>
+                  <div key={s.label} className="px-5 py-4" style={{ background: "rgba(18,18,18,0.72)", backdropFilter: "blur(6px)" }}>
+                    <div className="font-mono text-[10px] uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>{s.label}</div>
+                    <div className="mt-1 font-mono text-2xl font-bold tabular-nums" style={{ color: s.accent ?? "var(--text-primary)" }}>{s.value}</div>
                   </div>
                 ))}
               </div>
             );
           })()}
         </div>
-      </div>
+      </header>
 
       {/* Filters & Content */}
-      <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+      <div id="vaults" className="flex-1 scroll-mt-24 px-4 py-6 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Filters */}
           <OpportunityFilters

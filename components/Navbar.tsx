@@ -9,23 +9,16 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
           {/* Branding */}
-          <div className="flex flex-col gap-0.5">
-            <Link href="/" className="text-sm font-semibold transition-colors hover:text-[var(--accent)]" style={{ color: "var(--text-primary)" }}>
-              GoldRush Vault Explorer
-            </Link>
-            <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
-              Powered by{" "}
-              <a
-                href="https://goldrush.dev"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="transition-colors hover:text-[var(--accent)]"
-                style={{ color: "var(--accent)" }}
-              >
-                goldrush.dev
-              </a>
-            </div>
-          </div>
+          <Link href="/" className="group flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/goldrush-logo.svg" alt="GoldRush" className="h-4 w-auto" />
+            <span
+              className="hidden border-l pl-2.5 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors group-hover:text-[var(--accent)] sm:inline"
+              style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+            >
+              Vault Explorer
+            </span>
+          </Link>
 
           {/* Nav Links */}
           <div className="flex items-center gap-4 sm:gap-6">

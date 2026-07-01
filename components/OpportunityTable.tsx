@@ -25,7 +25,7 @@ interface LiquidityInfo {
 // Per-vault liquidity: undefined = not fetched, null = no live data, object = loaded.
 type LiquidityState = Record<string, LiquidityInfo | null | undefined>;
 
-const GREEN = "var(--gr-green)";
+const GREEN = "var(--accent)";
 const LIQUID_PCT_GOOD = 0.05; // ≥5% instantly-withdrawable reads as healthy (green)
 
 function fmtUsd(v: number): string {
@@ -133,7 +133,7 @@ export default function OpportunityTable({ opportunities, onRowClick }: Opportun
           tabIndex={0}
           onClick={() => handleSort(column)}
           onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleSort(column)}
-          className="flex cursor-pointer select-none items-center gap-1.5 text-xs uppercase tracking-wider transition-colors hover:text-[var(--gr-green)]"
+          className="flex cursor-pointer select-none items-center gap-1.5 text-xs uppercase tracking-wider transition-colors hover:text-[var(--accent)]"
           style={{ justifyContent: align === "right" ? "flex-end" : "flex-start" }}
         >
           {label}
@@ -196,7 +196,7 @@ export default function OpportunityTable({ opportunities, onRowClick }: Opportun
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="mt-0.5 inline-flex items-center gap-1 font-mono text-xs transition-colors hover:text-[var(--gr-green)]"
+                    className="mt-0.5 inline-flex items-center gap-1 font-mono text-xs transition-colors hover:text-[var(--accent)]"
                     style={{ color: "var(--text-secondary)" }}
                   >
                     {shortAddr(opp.vaultAddress)}

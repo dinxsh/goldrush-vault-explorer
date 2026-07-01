@@ -35,7 +35,7 @@ export default function OpportunityCard({ opportunity }: OpportunityCardProps) {
           </p>
         </div>
         <div className="shrink-0 flex gap-1.5">
-          <span className="rounded px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap" style={{ background: "var(--gr-green-dim)", color: "var(--accent)" }}>
+          <span className="rounded px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
             {opportunity.protocol}
           </span>
           <span className="rounded px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap" style={{ background: riskColor, color: riskTextColor }}>
@@ -49,7 +49,7 @@ export default function OpportunityCard({ opportunity }: OpportunityCardProps) {
         {/* Main metrics */}
         <div className="flex gap-4 items-baseline mb-2">
           <div>
-            <div className="text-2xl font-bold" style={{ color: "var(--accent)" }}>
+            <div className="text-2xl font-bold" style={{ color: "var(--gr-green)" }}>
               {opportunity.apy ? `${(opportunity.apy * 100).toFixed(2)}%` : "—"}
             </div>
             <div className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: "var(--text-secondary)" }}>

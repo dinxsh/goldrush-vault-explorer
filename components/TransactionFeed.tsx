@@ -124,8 +124,25 @@ export default function TransactionFeed({ txs }: Props) {
 
                         <div className="flex-1" />
 
+                        {/* Amount moved (how much deposited / withdrawn / transferred) */}
+                        {tx.amount && (
+                            <div className="hidden sm:flex flex-col items-end shrink-0">
+                                <span
+                                    className="text-sm font-semibold leading-tight tabular-nums"
+                                    style={{ color: failed ? "var(--negative)" : cat.color, fontFamily: mono }}
+                                >
+                                    {tx.amount}
+                                </span>
+                                {tx.tokenSymbol && (
+                                    <span className="text-[11px] leading-tight" style={{ color: "var(--text-secondary)" }}>
+                                        {tx.tokenSymbol}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
                         {/* Time + from */}
-                        <div className="flex flex-col items-end shrink-0">
+                        <div className="flex flex-col items-end shrink-0" style={{ minWidth: 88 }}>
                             <span
                                 className="text-xs leading-tight"
                                 style={{ color: "var(--text-secondary)" }}

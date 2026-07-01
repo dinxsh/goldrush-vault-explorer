@@ -41,6 +41,11 @@ export interface TxSummary {
     eventCategory: "deposit" | "withdraw" | "swap" | "transfer" | "approval" | "other";
     explorerUrl: string;
     fromAddress: string;
+    // Primary token amount moved by the event (how much was deposited / withdrawn
+    // / transferred), human-formatted, plus its token symbol. Null when the event
+    // exposes no decodable amount.
+    amount: string | null;
+    tokenSymbol: string | null;
 }
 
 export interface VaultStats {

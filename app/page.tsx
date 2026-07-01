@@ -156,15 +156,17 @@ export default function HomePage() {
                 </div>
 
                 <button
-                    onClick={() => window.location.href = "/earn"}
-                    className="w-full rounded px-4 py-3 text-sm font-semibold transition-colors hover:border-[var(--accent)]"
+                    onClick={() => router.push("/earn")}
+                    className="w-full rounded border px-4 py-3 text-sm font-semibold transition-colors"
                     style={{
-                        background: "transparent",
-                        borderColor: "var(--border)",
-                        color: "var(--text-secondary)",
+                        background: "rgba(249,115,22,0.08)",
+                        borderColor: "var(--accent)",
+                        color: "var(--accent)",
                     }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(249,115,22,0.16)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(249,115,22,0.08)")}
                 >
-                    Discover Opportunities
+                    Discover Opportunities →
                 </button>
 
                 {/* Presets */}

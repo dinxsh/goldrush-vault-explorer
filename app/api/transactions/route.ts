@@ -38,8 +38,17 @@ const EVENT_PRIORITY: Record<string, number> = {
     Deposit: 7,
 };
 
-function pickEventName(logEvents: Array<{ decoded?: { name?: string } | null } | null>): string | null {
-    let best: string | null = null;
+// A decoded log event, loosely typed to the fields we read off it.
+interface LogEvent {
+    decoded?: { name?: string; params?: Array<{ name?: string; value?: unknown } | null> | null } | null;
+    sender_contract_decimals?: number | null;
+    sender_contract_ticker_symbol?: string | null;
+}
+
+// Pick the log event that best describes user intent (highest-priority name), so
+// we can read both its name and its amount off the same event.
+function pickEvent(logEvents: LogEvent[]): LogEvent | null {
+    let best: LogEvent | null = null;
     let bestPriority = -1;
     for (const log of logEvents) {
         const name = log?.decoded?.name;
@@ -47,10 +56,45 @@ function pickEventName(logEvents: Array<{ decoded?: { name?: string } | null } |
         const priority = EVENT_PRIORITY[name] ?? 0;
         if (priority > bestPriority) {
             bestPriority = priority;
-            best = name;
+            best = log;
         }
     }
     return best;
+}
+
+// Human-format a raw integer token amount (string) with the token's decimals.
+function formatTokenAmount(raw: string, decimals: number): string | null {
+    try {
+        const bi = BigInt(raw);
+        if (bi === 0n) return "0";
+        const divisor = 10n ** BigInt(decimals);
+        const whole = Number(bi / divisor);
+        const frac = Number(bi % divisor) / Number(divisor);
+        const val = whole + frac;
+        if (val >= 1_000_000) return `${(val / 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })}M`;
+        if (val >= 1000) return val.toLocaleString("en-US", { maximumFractionDigits: 0 });
+        if (val >= 1) return val.toLocaleString("en-US", { maximumFractionDigits: 2 });
+        return val.toLocaleString("en-US", { maximumFractionDigits: 6 });
+    } catch {
+        return null;
+    }
+}
+
+// Pull the primary amount + token symbol from the picked event's decoded params.
+// Preference covers ERC-4626 (assets/shares), ERC-20 Transfer (value) and common
+// lending events (amount/wad).
+function extractAmount(log: LogEvent | null): { amount: string | null; tokenSymbol: string | null } {
+    if (!log) return { amount: null, tokenSymbol: null };
+    const symbol = log.sender_contract_ticker_symbol ?? null;
+    const params = log.decoded?.params ?? [];
+    const get = (n: string): string | null => {
+        const p = params?.find((x) => x?.name === n && x?.value != null);
+        return p?.value != null ? String(p.value) : null;
+    };
+    const raw = get("assets") ?? get("value") ?? get("amount") ?? get("wad") ?? get("_value") ?? get("shares");
+    if (raw == null) return { amount: null, tokenSymbol: symbol };
+    const decimals = log.sender_contract_decimals ?? 18;
+    return { amount: formatTokenAmount(raw, decimals), tokenSymbol: symbol };
 }
 
 function categorize(eventName: string | null): TxSummary["eventCategory"] {
@@ -95,7 +139,9 @@ export async function GET(req: NextRequest) {
                 const logs = (tx.log_events ?? []).filter(
                     (l): l is NonNullable<typeof l> => l !== null && l !== undefined
                 );
-                const eventName = pickEventName(logs);
+                const picked = pickEvent(logs as LogEvent[]);
+                const eventName = picked?.decoded?.name ?? null;
+                const { amount, tokenSymbol } = extractAmount(picked);
                 return {
                     hash: tx.tx_hash ?? "",
                     timestamp: tx.block_signed_at instanceof Date ? tx.block_signed_at.toISOString() : "",
@@ -104,6 +150,8 @@ export async function GET(req: NextRequest) {
                     eventCategory: categorize(eventName),
                     explorerUrl: explorerTxUrl(chain, tx.tx_hash ?? ""),
                     fromAddress: tx.from_address ?? "",
+                    amount,
+                    tokenSymbol,
                 };
             });
 

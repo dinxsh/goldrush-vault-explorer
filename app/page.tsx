@@ -301,17 +301,60 @@ export default function EarnPage() {
             </div>
           )}
 
-          {/* Loading State */}
+          {/* Loading State — mirrors the real layout (card grid or table rows)
+              so the page doesn't jump when data arrives. */}
           {loading && (
-            <div className="mt-6 flex flex-col gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-24 rounded border animate-pulse"
-                  style={{ background: "var(--border)", opacity: 1 - i * 0.2 }}
-                />
-              ))}
-            </div>
+            view === "grid" ? (
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <div key={i} className="rounded border p-4" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
+                    {/* title + description + badges */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="h-4 w-2/3 animate-pulse rounded" style={{ background: "var(--surface-hover)" }} />
+                        <div className="h-3 w-full animate-pulse rounded" style={{ background: "var(--surface)" }} />
+                        <div className="h-3 w-4/5 animate-pulse rounded" style={{ background: "var(--surface)" }} />
+                      </div>
+                      <div className="flex shrink-0 gap-1.5">
+                        <div className="h-4 w-12 animate-pulse rounded" style={{ background: "var(--surface)" }} />
+                        <div className="h-4 w-9 animate-pulse rounded" style={{ background: "var(--surface)" }} />
+                      </div>
+                    </div>
+                    {/* APY + TVL metrics */}
+                    <div className="mt-6 flex items-end gap-5">
+                      <div className="space-y-1.5">
+                        <div className="h-6 w-20 animate-pulse rounded" style={{ background: "var(--surface-hover)" }} />
+                        <div className="h-2.5 w-8 animate-pulse rounded" style={{ background: "var(--surface)" }} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="h-5 w-16 animate-pulse rounded" style={{ background: "var(--surface)" }} />
+                        <div className="h-2.5 w-8 animate-pulse rounded" style={{ background: "var(--surface)" }} />
+                      </div>
+                    </div>
+                    {/* footer */}
+                    <div className="mt-4 flex justify-between">
+                      <div className="h-2.5 w-12 animate-pulse rounded" style={{ background: "var(--surface)" }} />
+                      <div className="h-2.5 w-10 animate-pulse rounded" style={{ background: "var(--surface)" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-6 overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 border-t px-4 py-4 first:border-t-0" style={{ borderColor: "var(--border)" }}>
+                    <div className="h-6 w-6 shrink-0 animate-pulse rounded-full" style={{ background: "var(--surface)" }} />
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="h-3.5 w-40 max-w-[60%] animate-pulse rounded" style={{ background: "var(--surface-hover)" }} />
+                      <div className="h-2.5 w-24 max-w-[40%] animate-pulse rounded" style={{ background: "var(--surface)" }} />
+                    </div>
+                    <div className="hidden h-3.5 w-14 animate-pulse rounded sm:block" style={{ background: "var(--surface)" }} />
+                    <div className="hidden h-3.5 w-16 animate-pulse rounded sm:block" style={{ background: "var(--surface)" }} />
+                    <div className="hidden h-3.5 w-12 animate-pulse rounded sm:block" style={{ background: "var(--surface)" }} />
+                  </div>
+                ))}
+              </div>
+            )
           )}
 
           {/* Empty State */}
